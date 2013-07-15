@@ -243,6 +243,8 @@ sub send_patch {
 sub send_file {
   my ( $file, $attr ) = @_;
 
+  return _send_default(@_) if -l $file;
+
   if ( -s $file < LIMIT ) {
     return _send_default(@_);
   }
