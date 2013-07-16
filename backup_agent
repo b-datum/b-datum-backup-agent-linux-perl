@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 use utf8;
-use strictures 1;
+#use strictures 1;
 use warnings;
 use Carp;
 use warnings qw(FATAL utf8);
