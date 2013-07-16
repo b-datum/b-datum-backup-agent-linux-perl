@@ -17,12 +17,10 @@ fi
 $CURL -kL http://install.perlbrew.pl | bash
 source ~/perl5/perlbrew/etc/bashrc
 echo "source ~/perl5/perlbrew/etc/bashrc" >> ~/.bashrc
-rm -rf $HOME/perl5/perlbrew/bin/patchperl
-rm -rf $HOME/perl5/perlbrew/bin/cpanm
-perlbrew install-patchperl
+perlbrew install-patchperl || true 
 perlbrew install -n perl-5.12.2
-perlbrew switch perl-5.12.2
-perlbrew install-cpanm
+perlbrew switch perl-5.12.2 
+perlbrew install-cpanm || true
 cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use
 
 mkdir -p $HOME/bin
