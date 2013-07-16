@@ -14,6 +14,18 @@ else
     exit
 fi
 
+if [ -f /etc/debian_version ] ; then
+  for PKG in build-essential lib-ssl ; do
+    PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $PKG|grep "install ok installed")
+    echo Checking for $PKG: $PKG_OK
+
+    if [ "" == "$PKG_OK" ]; then
+      echo "No $PKG. Setting up $PKG."
+      echo "please, do 'apt-get install $PKG'"
+    fi
+  done
+fi
+
 $CURL -kL http://install.perlbrew.pl | bash
 source ~/perl5/perlbrew/etc/bashrc
 
