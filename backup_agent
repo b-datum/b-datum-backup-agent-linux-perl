@@ -10,14 +10,14 @@ use open qw(:std :utf8);
 use LWP::UserAgent::Determined;
 use LWP::ConnCache;
 use IO::Socket::SSL;
-use Data::Printer;
+
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
 use Digest::MD5::File qw(file_md5_hex);
 use Digest::MD5 qw(md5_hex);
 use File::Next;
-use Path::Class qw(file);
+
 use JSON qw(encode_json decode_json);
 use IO::Handle;
 use Getopt::Long::Descriptive;
@@ -282,7 +282,7 @@ sub _send_multipart {
 
   # parts
   my $buffer;
-  my $fh = file($file)->openr;
+  my $fh = path($file)->openr;
   my $i  = 1;
   my @parts;
 
