@@ -24,9 +24,12 @@ perlbrew install -n perl-5.12.2
 perlbrew switch perl-5.12.2
 perlbrew install-cpanm
 cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use
-perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' backup_agent| cpanm
-cpanm LWP::Protocol::https
+
 mkdir -p $HOME/bin
 $CURL -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/backup_agent > $HOME/bin/backup_agent
+
+perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' $HOME/bin/backup_agent| cpanm
+cpanm LWP::Protocol::https
+
 chmod +x $HOME/bin/backup_agent
 
