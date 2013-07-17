@@ -35,7 +35,7 @@ fi
 
 $CURL -kL http://install.perlbrew.pl | bash
 
-if [ -f $HOME/perl5/perlbrew/bin/perlbrew ] ; then
+if [ ! -f $HOME/perl5/perlbrew/bin/perlbrew ] ; then
 	echo "Where is perlbrew ?"
 	exit
 fi
