@@ -15,13 +15,14 @@ else
 fi
 
 if [ -f /etc/debian_version ] ; then
-  for PKG in build-essential lib-ssl ; do
+  for PKG in build-essential libssl-dev ; do
     PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $PKG|grep "install ok installed")
     echo Checking for $PKG: $PKG_OK
 
     if [ "" == "$PKG_OK" ]; then
       echo "No $PKG. Setting up $PKG."
       echo "please, do 'apt-get install $PKG'"
+      exit
     fi
   done
 fi
