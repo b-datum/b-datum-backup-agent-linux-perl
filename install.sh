@@ -1,6 +1,10 @@
 #!/bin/bash
 
 CURL=/usr/bin/curl
+PERL_VERSION=5.12.2
+APP=bdatum-backup
+BIN=$HOME/bin/$APP
+BASEBIN=`dirname $BIN`
 
 if [ ! -d $HOME ] ; then
 	echo '$HOME is not a directory'
@@ -47,16 +51,17 @@ if ! grep "source ~/perl5/perlbrew/etc/bashrc" ~/.bashrc ; then
 fi
 
 perlbrew -f install-patchperl
-perlbrew install -n perl-5.12.2
-perlbrew switch perl-5.12.2 
+perlbrew install -n perl-$VERSION
+perlbrew switch perl-$VERSION
 perlbrew -f install-cpanm
-cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use
+cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use LWP::Protocol::https
 
-mkdir -p $HOME/bin
-$CURL -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/backup_agent > $HOME/bin/backup_agent
+mkdir -p $BASEBIN
+$CURL -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/bdatum-backup > $BIN
+perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' $BIN| cpanm -n
 
-perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' $HOME/bin/backup_agent| cpanm -n
-cpanm LWP::Protocol::https
+chmod +x $BIN
 
-chmod +x $HOME/bin/backup_agent
+# Backward compatibility
+ln -sf $BIN $BASEBIN/backup_agent
 
