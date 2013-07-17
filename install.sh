@@ -2,6 +2,12 @@
 
 CURL=/usr/bin/curl
 
+if [ ! -d $HOME ] ; then
+	echo '$HOME is not a directory'
+	exit
+fi
+
+
 if [ "$(id -u)" == "0" ]; then
    echo "This script can't be run as root" 1>&2
    exit 1
@@ -28,6 +34,12 @@ if [ -f /etc/debian_version ] ; then
 fi
 
 $CURL -kL http://install.perlbrew.pl | bash
+
+if [ -f $HOME/perl5/perlbrew/bin/perlbrew ] ; then
+	echo "Where is perlbrew ?"
+	exit
+fi
+
 source ~/perl5/perlbrew/etc/bashrc
 
 if ! grep "source ~/perl5/perlbrew/etc/bashrc" ~/.bashrc ; then
