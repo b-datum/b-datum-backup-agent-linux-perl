@@ -448,8 +448,12 @@ sub _read_cache {
   my @to_delete;
   while (<$fh>) {
     my ( $file, $mtime, $etag ) = split /,/, $_;
-    push( @to_delete, $file ), next
-      if !$opt->nodelete && !-e $file;
+    if ( !-e $file ) {
+      if ( !$opt->nodelete ) {
+        push( @to_delete, $file );
+      }
+      next;
+    }
     $cache{$file} = [ $mtime, $etag ];
   }
   print '* Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s\n";
@@ -475,7 +479,8 @@ sub _write_cache {
     map { my $attrs = $cache{$_}; join( q{,}, $_, @$attrs, "\n" ) }
       keys %cache
   );
-#  $cache_file->close;
+
+  #  $cache_file->close;
   print '* Cache write took: '
     . sprintf( "%.9f", ( time - $t ) )
     . "s\n ==> Done!\n";
