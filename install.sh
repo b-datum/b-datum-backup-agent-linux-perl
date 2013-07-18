@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CURL=/usr/bin/curl
-PERL_VERSION=5.12.2
+PERL_VERSION=5.16.3
 APP=bdatum-backup
 BIN=$HOME/bin/$APP
 BASEBIN=`dirname $BIN`
@@ -51,12 +51,14 @@ if ! grep "source ~/perl5/perlbrew/etc/bashrc" ~/.bashrc ; then
 fi
 
 perlbrew -f install-patchperl
-perlbrew install -n perl-$VERSION
-perlbrew switch perl-$VERSION
+perlbrew install -n perl-$PERL_VERSION
+perlbrew switch perl-$PERL_VERSION
 perlbrew -f install-cpanm
 cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use LWP::Protocol::https
 
 mkdir -p $BASEBIN
+
+
 $CURL -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/bdatum-backup > $BIN
 perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' $BIN| cpanm -n
 
