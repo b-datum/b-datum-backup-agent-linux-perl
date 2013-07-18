@@ -1,8 +1,16 @@
 b-datum-backup-agent-linux-perl
 ============
 
-Simples agente de backup escrito em Perl para realizar backups na [b-datum](http://b-datum.com/).
+Simples agente de backup escrito em Perl para realizar backups na b-datum (http://b-datum.com/).
 
+
+Instalação
+===========
+
+$ git clone https://github.com/b-datum/b-datum-backup-agent-linux-perl.git
+$ cd b-datum-backup-agent-linux-perl
+$ ./install.sh
+$ source ~/perl5/perlbrew/etc/bashrc
 
 Autor
 =======

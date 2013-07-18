@@ -54,6 +54,9 @@ perlbrew -f install-patchperl
 perlbrew install -n perl-$PERL_VERSION
 perlbrew switch perl-$PERL_VERSION
 perlbrew -f install-cpanm
+
+source ~/perl5/perlbrew/etc/bashrc
+
 cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use LWP::Protocol::https
 
 mkdir -p $BASEBIN
