@@ -1,6 +1,16 @@
 #!/bin/bash
 
 CURL=/usr/bin/curl
+PERL_VERSION=5.12.2
+APP=bdatum-backup
+BIN=$HOME/bin/$APP
+BASEBIN=`dirname $BIN`
+
+if [ ! -d $HOME ] ; then
+	echo '$HOME is not a directory'
+	exit
+fi
+
 
 if [ "$(id -u)" == "0" ]; then
    echo "This script can't be run as root" 1>&2
@@ -14,16 +24,44 @@ else
     exit
 fi
 
+if [ -f /etc/debian_version ] ; then
+  for PKG in build-essential libssl-dev ; do
+    PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $PKG|grep "install ok installed")
+    echo Checking for $PKG: $PKG_OK
+
+    if [ "" == "$PKG_OK" ]; then
+      echo "No $PKG. Setting up $PKG."
+      echo "please, do 'apt-get install $PKG'"
+      exit
+    fi
+  done
+fi
+
 $CURL -kL http://install.perlbrew.pl | bash
+
+if [ ! -f $HOME/perl5/perlbrew/bin/perlbrew ] ; then
+	echo "Where is perlbrew ?"
+	exit
+fi
+
 source ~/perl5/perlbrew/etc/bashrc
-echo "source ~/perl5/perlbrew/etc/bashrc" >> ~/.bashrc
-perlbrew install-patchperl
-perlbrew install -n perl-5.12.2
-perlbrew switch perl-5.12.2
-perlbrew install-cpanm
-cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use
-perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' backup_agent| cpanm
-cpanm LWP::Protocol::https
-mkdir $HOME/bin
-$CURL -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/backup_agent > $HOME/bin/backup_agent
+
+if ! grep "source ~/perl5/perlbrew/etc/bashrc" ~/.bashrc ; then
+	echo "source ~/perl5/perlbrew/etc/bashrc" >> ~/.bashrc
+fi
+
+perlbrew -f install-patchperl
+perlbrew install -n perl-$VERSION
+perlbrew switch perl-$VERSION
+perlbrew -f install-cpanm
+cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use LWP::Protocol::https
+
+mkdir -p $BASEBIN
+$CURL -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/bdatum-backup > $BIN
+perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_modules(@ARGV)' $BIN| cpanm -n
+
+chmod +x $BIN
+
+# Backward compatibility
+ln -sf $BIN $BASEBIN/backup_agent
 
