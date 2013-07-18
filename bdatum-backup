@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 
-
 package Path::Tiny;
 
 use 5.008001;
@@ -604,7 +603,7 @@ sub volume {
 
 1;
 
-  # vim: ts=4 sts=4 sw=4 et:
+# vim: ts=4 sts=4 sw=4 et:
 
 =pod
 
@@ -1228,8 +1227,6 @@ This is free software, licensed under:
 
 =cut
 
-
-
 package main;
 
 use utf8;
@@ -1268,9 +1265,9 @@ use List::MoreUtils qw(pairwise);
 use constant {
   LIMIT => 5 * 1024 * 1024,
 
-  #  BASE_URL => 'https://api.b-datum.com',
+  BASE_URL => 'https://api.b-datum.com',
 
-  BASE_URL => 'http://localhost:5000/',
+  #  BASE_URL => 'http://localhost:5000/',
 
   # file attrs
   MTIME   => 0,
