@@ -3,7 +3,7 @@ perl:
   - "5.16"
   - "5.14"
   - "5.10"
-script: bdatum-backup
+script: make test install
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq libdatetime-perl libdigest-md5-file-perl libfile-next-perl libgetopt-long-descriptive-perl
