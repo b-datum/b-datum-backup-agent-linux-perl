@@ -46,7 +46,7 @@ our $VERSION = '0.02';
 
 use constant {
   LIMIT => 5 * 1024 * 1024,
-  BASE_URL => 'https://api.b-datum.com',
+  BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
 
   # file attrs
   MTIME   => 0,
