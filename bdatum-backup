@@ -46,10 +46,7 @@ our $VERSION = '0.02';
 
 use constant {
   LIMIT => 5 * 1024 * 1024,
-
-  #  BASE_URL => 'https://api.b-datum.com',
-
-  BASE_URL => 'http://localhost:5000/',
+  BASE_URL => 'https://api.b-datum.com',
 
   # file attrs
   MTIME   => 0,
@@ -63,13 +60,13 @@ use constant {
 my ( $node_key, $partner_key, $path );
 my ( $opt, $usage ) = describe_options(
   "$0 $VERSION - %o <some-arg>",
-  [ "node_key|n=s"    => 'chave do ponto',    { required => 1 } ],
-  [ "partner_key|p=s" => 'chave do parceiro', { required => 1 } ],
-  [ "dir|d=s"         => 'pasta alvo',        { required => 1 } ],
-  [ "nodelete|k" => 'não remover do storage arquivos deletados', ],
-  [ "workers|w"  => 'número de processos', { default => 5 } ],
-  [ "verbose|v"  => 'modo verboso', ],
-  [ "config|c=s" => 'arquivo de configuração', ],
+  [ "node_key|n=s"    => 'node key' ],
+  [ "partner_key|p=s" => 'partner key' ],
+  [ "dir|d=s"         => 'target path' ],
+  [ "nodelete|k" => 'not send DELETE to removed files' ],
+  [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
+  [ "verbose|v"  => 'verbose mode', ],
+  [ "config|c=s" => 'config file', ],
   [],
   [ 'help|h', "print usage message and exit" ],
 );
