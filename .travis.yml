@@ -1,8 +1,12 @@
 language: perl
+perl:
+  - "5.16"
+  - "5.14"
+  - "5.10"
 script: bdatum-backup
 before_install:
- - sudo apt-get update -qq
- - sudo apt-get install -qq libdatetime-perl libdigest-md5-file-perl libfile-next-perl libgetopt-long-descriptive-perl
- - sudo apt-get install -qq libio-socket-ssl-perl liblwp-useragent-determined-perl libparallel-forkmanager-perl
- - sudo apt-get install -qq libtry-tiny-perl libperl6-junction-perl libfile-mimeinfo-perl
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq libdatetime-perl libdigest-md5-file-perl libfile-next-perl libgetopt-long-descriptive-perl
+  - sudo apt-get install -qq libio-socket-ssl-perl liblwp-useragent-determined-perl libparallel-forkmanager-perl
+  - sudo apt-get install -qq libtry-tiny-perl libperl6-junction-perl libfile-mimeinfo-perl
 

@@ -42,7 +42,7 @@ use File::Basename;
 use Config::Any::INI;
 
 use version;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use constant {
   LIMIT => 5 * 1024 * 1024,

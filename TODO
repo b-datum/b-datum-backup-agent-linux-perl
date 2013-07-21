@@ -2,3 +2,4 @@
 - log4perl
 - all options in config file
 - documentation about config file
+- use the same $VERSION in bdatum-backup and Makefile.PL

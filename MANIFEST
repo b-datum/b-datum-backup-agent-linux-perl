@@ -1,4 +1,6 @@
+bdatum-backup
+Changes
+etc/bdatum/backup.conf
+install.sh
 Makefile.PL
 README
-bdatum-backup
-install.sh
