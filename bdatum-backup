@@ -78,7 +78,7 @@ my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 if ( -r $configfile ) {
     my $mode = sprintf '%04o', ( stat $configfile )[2] & 07777;
     if ($mode ne '0400') {
-        print "*** ERROR: Please run 'chmod 0400 $configfile'.";
+        print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
         exit 78;
     }
 
@@ -92,7 +92,7 @@ if ( -r $configfile ) {
   ( $opt->node_key, $opt->partner_key, $opt->dir );
 
 if (!$node_key or !$partner_key or !$path) {
-    print '*** ERROR: Required option missing.\n';
+    print "*** ERROR: Required option missing.\n";
     exit 64;
 }
 
