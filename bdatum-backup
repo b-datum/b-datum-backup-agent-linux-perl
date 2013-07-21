@@ -74,7 +74,7 @@ my ( $opt, $usage ) = describe_options(
   [ 'help|h', "print usage message and exit" ],
 );
 
-print( $usage->text ), exit if $opt->help;
+print( $usage->text ), exit( 0 ) if $opt->help;
 
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
@@ -82,7 +82,7 @@ if ( -r $configfile ) {
     my $mode = sprintf '%04o', ( stat $configfile )[2] & 07777;
     if ($mode ne '0400') {
         print "*** ERROR: Please run 'chmod 0400 $configfile'.";
-        exit;
+        exit 78;
     }
 
     my $config = Config::Any::YAML->load( $configfile );
@@ -96,7 +96,7 @@ if ( -r $configfile ) {
 
 if (!$node_key or !$partner_key or !$path) {
     print '*** ERROR: Required option missing.\n';
-    exit;
+    exit 64;
 }
 
 my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
@@ -157,7 +157,7 @@ my $files = File::Next::everything(
 my $pm = Parallel::ForkManager->new( $opt->workers );
 
 start();
-warn 'end';
+#warn 'end';
 $pm->wait_all_children;
 exit(0);
 
