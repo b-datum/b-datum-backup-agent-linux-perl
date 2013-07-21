@@ -39,7 +39,9 @@ use List::MoreUtils qw(pairwise);
 
 use File::stat;
 use File::Basename;
+use Config::Any::YAML;
 
+use version;
 our $VERSION = '0.02';
 
 use constant {
@@ -67,14 +69,35 @@ my ( $opt, $usage ) = describe_options(
   [ "nodelete|k" => 'não remover do storage arquivos deletados', ],
   [ "workers|w"  => 'número de processos', { default => 5 } ],
   [ "verbose|v"  => 'modo verboso', ],
+  [ "config|c=s" => 'arquivo de configuração', ],
   [],
   [ 'help|h', "print usage message and exit" ],
 );
 
 print( $usage->text ), exit if $opt->help;
 
+my $configfile = $opt->config || '/etc/bdatum/backup.conf';
+
+if ( -r $configfile ) {
+    my $mode = sprintf '%04o', ( stat $configfile )[2] & 07777;
+    if ($mode ne '0400') {
+        print "*** ERROR: Please run 'chmod 0400 $configfile'.";
+        exit;
+    }
+
+    my $config = Config::Any::YAML->load( $configfile );
+    $node_key = $config->{ node_key };
+    $partner_key = $config->{ parner_key };
+    $path = $config->{ path };
+}
+
 ( $node_key, $partner_key, $path ) =
   ( $opt->node_key, $opt->partner_key, $opt->dir );
+
+if (!$node_key or !$partner_key or !$path) {
+    print '*** ERROR: Required option missing.\n';
+    exit;
+}
 
 my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
 my $context   = IO::Socket::SSL::SSL_Context->new(
