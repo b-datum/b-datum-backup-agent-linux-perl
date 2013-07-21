@@ -39,7 +39,7 @@ use List::MoreUtils qw(pairwise);
 
 use File::stat;
 use File::Basename;
-use Config::Any::YAML;
+use Config::Any::INI;
 
 use version;
 our $VERSION = '0.02';
@@ -83,7 +83,7 @@ if ( -r $configfile ) {
         exit 78;
     }
 
-    my $config = Config::Any::YAML->load( $configfile );
+    my $config = Config::Any::INI->load( $configfile );
     $node_key = $config->{ node_key };
     $partner_key = $config->{ partner_key };
     $path = $config->{ path };
