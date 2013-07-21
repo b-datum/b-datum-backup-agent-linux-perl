@@ -40,6 +40,8 @@ use List::MoreUtils qw(pairwise);
 use File::stat;
 use File::Basename;
 
+our $VERSION = '0.02';
+
 use constant {
   LIMIT => 5 * 1024 * 1024,
 
@@ -58,7 +60,7 @@ use constant {
 
 my ( $node_key, $partner_key, $path );
 my ( $opt, $usage ) = describe_options(
-  "$0 %o <some-arg>",
+  "$0 $VERSION - %o <some-arg>",
   [ "node_key|n=s"    => 'chave do ponto',    { required => 1 } ],
   [ "partner_key|p=s" => 'chave do parceiro', { required => 1 } ],
   [ "dir|d=s"         => 'pasta alvo',        { required => 1 } ],
