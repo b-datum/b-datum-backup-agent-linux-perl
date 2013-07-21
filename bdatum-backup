@@ -87,7 +87,7 @@ if ( -r $configfile ) {
 
     my $config = Config::Any::YAML->load( $configfile );
     $node_key = $config->{ node_key };
-    $partner_key = $config->{ parner_key };
+    $partner_key = $config->{ partner_key };
     $path = $config->{ path };
 }
 
