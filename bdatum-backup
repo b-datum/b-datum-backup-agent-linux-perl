@@ -76,8 +76,9 @@ print( $usage->text ), exit( 0 ) if $opt->help;
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
 if ( -r $configfile ) {
-    my $mode = sprintf '%04o', ( stat $configfile )[2] & 07777;
-    if ($mode ne '0400') {
+    my $st = stat $configfile ;
+    my $mode = sprintf( '%04o', $st->mode & 07777 );
+    if ( $mode ne '0400' ) {
         print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
         exit 78;
     }
