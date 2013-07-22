@@ -499,7 +499,7 @@ sub _read_cache {
 
   my $cache_version = &_read_cache_version($cache_file_version);
   if ( version->parse($cache_version) != version->parse($VERSION) ) {
-    unlink( $cache_file );
+    unlink( $cache_file_version );
   }
 
   my $fh = IO::File->new( $cache_file, O_RDONLY|O_CREAT, ':unix:encoding(UTF-8)' )
