@@ -37,25 +37,27 @@ if [ -f /etc/debian_version ] ; then
   done
 fi
 
-$CURL -kL http://install.perlbrew.pl | bash
+if [ ! $NOT_INSTALL_PERLBREW ] ; then
+  $CURL -kL http://install.perlbrew.pl | bash
 
-if [ ! -f $HOME/perl5/perlbrew/bin/perlbrew ] ; then
-	echo "Where is perlbrew ?"
-	exit
+  if [ ! -f $HOME/perl5/perlbrew/bin/perlbrew ] ; then
+     echo "Where is perlbrew ?"
+     exit
+  fi
+
+  source ~/perl5/perlbrew/etc/bashrc
+
+  if ! grep "source ~/perl5/perlbrew/etc/bashrc" ~/.bashrc ; then
+	  echo "source ~/perl5/perlbrew/etc/bashrc" >> ~/.bashrc
+  fi
+
+  perlbrew -f install-patchperl
+  perlbrew install -n perl-$PERL_VERSION
+  perlbrew switch perl-$PERL_VERSION
+  perlbrew -f install-cpanm
+
+  source ~/perl5/perlbrew/etc/bashrc
 fi
-
-source ~/perl5/perlbrew/etc/bashrc
-
-if ! grep "source ~/perl5/perlbrew/etc/bashrc" ~/.bashrc ; then
-	echo "source ~/perl5/perlbrew/etc/bashrc" >> ~/.bashrc
-fi
-
-perlbrew -f install-patchperl
-perlbrew install -n perl-$PERL_VERSION
-perlbrew switch perl-$PERL_VERSION
-perlbrew -f install-cpanm
-
-source ~/perl5/perlbrew/etc/bashrc
 
 cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use LWP::Protocol::https
 
