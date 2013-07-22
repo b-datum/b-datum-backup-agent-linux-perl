@@ -44,6 +44,8 @@ use Config::Any::INI;
 use version;
 our $VERSION = '0.03';
 
+$0 = "[$0 $VERSION]";
+
 use constant {
   LIMIT => 5 * 1024 * 1024,
   BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
