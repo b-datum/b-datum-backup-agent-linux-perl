@@ -1,6 +1,8 @@
 bdatum-backup
 Changes
 etc/bdatum/backup.conf
+etc/cron.d/bdatum-backup
 install.sh
 Makefile.PL
-README
+README.md
+scripts/debpackage.sh
