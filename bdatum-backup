@@ -39,13 +39,14 @@ use List::MoreUtils qw(pairwise);
 
 use File::stat;
 use File::Basename;
+use Config::Any::INI;
+
+use version;
+our $VERSION = '0.03';
 
 use constant {
   LIMIT => 5 * 1024 * 1024,
-
-  #  BASE_URL => 'https://api.b-datum.com',
-
-  BASE_URL => 'http://localhost:5000/',
+  BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
 
   # file attrs
   MTIME   => 0,
@@ -58,21 +59,43 @@ use constant {
 
 my ( $node_key, $partner_key, $path );
 my ( $opt, $usage ) = describe_options(
-  "$0 %o <some-arg>",
-  [ "node_key|n=s"    => 'chave do ponto',    { required => 1 } ],
-  [ "partner_key|p=s" => 'chave do parceiro', { required => 1 } ],
-  [ "dir|d=s"         => 'pasta alvo',        { required => 1 } ],
-  [ "nodelete|k" => 'não remover do storage arquivos deletados', ],
-  [ "workers|w"  => 'número de processos', { default => 5 } ],
-  [ "verbose|v"  => 'modo verboso', ],
+  "$0 $VERSION - %o <some-arg>",
+  [ "node_key|n=s"    => 'node key' ],
+  [ "partner_key|p=s" => 'partner key' ],
+  [ "dir|d=s"         => 'target path' ],
+  [ "nodelete|k" => 'not send DELETE to removed files' ],
+  [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
+  [ "verbose|v"  => 'verbose mode', ],
+  [ "config|c=s" => 'config file', ],
   [],
   [ 'help|h', "print usage message and exit" ],
 );
 
-print( $usage->text ), exit if $opt->help;
+print( $usage->text ), exit( 0 ) if $opt->help;
+
+my $configfile = $opt->config || '/etc/bdatum/backup.conf';
+
+if ( -r $configfile ) {
+    my $st = stat $configfile ;
+    my $mode = sprintf( '%04o', $st->mode & 07777 );
+    if ( $mode ne '0400' ) {
+        print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
+        exit 78;
+    }
+
+    my $config = Config::Any::INI->load( $configfile );
+    $node_key = $config->{ node_key };
+    $partner_key = $config->{ partner_key };
+    $path = $config->{ path };
+}
 
 ( $node_key, $partner_key, $path ) =
   ( $opt->node_key, $opt->partner_key, $opt->dir );
+
+if (!$node_key or !$partner_key or !$path) {
+    print "*** ERROR: Required option missing.\n";
+    exit 64;
+}
 
 my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
 my $context   = IO::Socket::SSL::SSL_Context->new(
@@ -131,7 +154,7 @@ my $files = File::Next::everything(
 my $pm = Parallel::ForkManager->new( $opt->workers );
 
 start();
-warn 'end';
+#warn 'end';
 $pm->wait_all_children;
 exit(0);
 

@@ -1,7 +1,7 @@
 use ExtUtils::MakeMaker;
 
 WriteMakefile(NAME      => 'bdatum-backup',
-              VERSION   => '0.01',
+              VERSION   => '0.03',
               ABSTRACT  => 'b-datum backup',
               LICENSE   => 'GPLv3',
               EXE_FILES => ['bdatum-backup'],
@@ -31,6 +31,7 @@ WriteMakefile(NAME      => 'bdatum-backup',
                 'Time::HiRes' => 0,
                 'Perl6::Junction' => 0,
                 'List::MoreUtils' => 0,
+                'Config::Any' => 0,
                }
               );
 

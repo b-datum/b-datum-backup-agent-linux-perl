@@ -1,4 +1,8 @@
-Makefile.PL
-README
 bdatum-backup
+Changes
+etc/bdatum/backup.conf
+etc/cron.d/bdatum-backup
 install.sh
+Makefile.PL
+README.md
+scripts/debpackage.sh

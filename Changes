@@ -1,0 +1,15 @@
+Release 0.03 Sun Jul 21 03:31:26 BRT 2013
+	- $ENV{BDATUM_BASE_URL} for local tests
+	- change for INI files, because use of YAML::Syck or YAML to parse config files is DEPRECATED.
+	- fix bitwise for stat->mode of configfile
+	- Interpolation typo
+	- translate help message
+	- add config example
+	- exit status codes, based on sysexits.h
+	- new option, load config file
+
+Release 0.02 Sat Jul 20 23:34:20 BRT 2013
+	- script to make deb package
+
+Release 0.01
+	- initial version
