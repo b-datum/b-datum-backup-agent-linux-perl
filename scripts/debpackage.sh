@@ -17,7 +17,11 @@ if ! which debuild >/dev/null; then
 	exit
 fi
 
-dh-make-perl $TARGET_DIR --desc 'b-datum backup' --email 'thiago@b-datum.com' --packagename 'b-datum-backup-perl' --intrusive
-(cd $TARGET_DIR && debuild)
+DEB_BUILD_OPTIONS="nocheck" \
+DEBFULLNAME="Thiago Rondon" \
+EMAIL="staff@b-datum.com" \
+dh-make-perl $TARGET_DIR --desc 'b-datum backup' --email 'staff@b-datum.com' --packagename 'b-datum-backup-perl' --intrusive
+
+(cd $TARGET_DIR && debuild debuild --no-tgz-check -us -uc)
 
 

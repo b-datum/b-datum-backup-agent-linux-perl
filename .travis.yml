@@ -3,11 +3,14 @@ perl:
   - "5.16"
   - "5.14"
   - "5.12"
-script: NOT_INSTALL_PERLBREW=1 bash install.sh
+script: make test install
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq build-essential libssl-dev devscripts dh-make-perl
+  - sudo apt-get install -qq build-essential libssl-dev devscripts dh-make-perl gdebi-core
   - sudo apt-get install -qq libdatetime-perl libdigest-md5-file-perl libfile-next-perl libgetopt-long-descriptive-perl
   - sudo apt-get install -qq libio-socket-ssl-perl liblwp-useragent-determined-perl libparallel-forkmanager-perl
   - sudo apt-get install -qq libtry-tiny-perl libperl6-junction-perl libfile-mimeinfo-perl
-
+after_install:
+  - NOT_INSTALL_PERLBREW=1 bash install.sh
+  - (cd ../ && bash b-datum-backup-agent-linux-perl/scripts/debpackage.sh )
+  - (cd ../ && sudo apt-get install -qq gdebi b-datum-backup-perl_0.03-1_all.deb )
