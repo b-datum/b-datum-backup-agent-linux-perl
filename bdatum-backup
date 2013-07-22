@@ -39,7 +39,7 @@ use List::MoreUtils qw(pairwise);
 
 use File::stat;
 use File::Basename;
-use Config::Any::INI;
+use Config::INI::Reader;
 
 use version;
 our $VERSION = qv('0.04');
@@ -60,6 +60,7 @@ use constant {
 };
 
 my ( $node_key, $partner_key, $path );
+
 my ( $opt, $usage ) = describe_options(
   "$0 $VERSION - %o <some-arg>",
   [ "node_key|n=s"    => 'node key' ],
@@ -69,9 +70,10 @@ my ( $opt, $usage ) = describe_options(
     "nodelete|k" =>
       q{don't remove in remote storage files deleted on local disk}
   ],
-  [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
-  [ "verbose|v"  => 'verbose mode', ],
-  [ "config|c=s" => 'config file', ],
+  [ "workers|w"   => 'number of workers (default: 5)', { default => 5 } ],
+  [ "verbose|v"   => 'verbose mode', ],
+  [ "config|c=s"  => 'config file', ],
+  [ "profile|y=s" => 'load profile', ],
   [],
   [ 'help|h', "print usage message and exit" ],
 );
@@ -88,10 +90,12 @@ if ( -r $configfile ) {
     exit 78;
   }
 
-  my $config = Config::Any::INI->load($configfile);
-  $node_key    = $config->{node_key};
-  $partner_key = $config->{partner_key};
-  $path        = $config->{path};
+  my $config = Config::INI::Reader->load($configfile);
+  my $profile = $opt->profile || '_';
+  $node_key = $config->{$profile}->{node_key} || $config->{_}->{node_key};
+  $partner_key =
+    $config->{$profile}->{partner_key} || $config->{_}->{partner_key};
+  $path = $config->{$profile}->{path} || $config->{_}->{path};
 }
 
 ( $node_key, $partner_key, $path ) =
