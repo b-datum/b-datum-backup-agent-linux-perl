@@ -22,6 +22,6 @@ DEBFULLNAME="Thiago Rondon" \
 EMAIL="staff@b-datum.com" \
 dh-make-perl $TARGET_DIR --desc 'b-datum backup' --email 'staff@b-datum.com' --packagename 'b-datum-backup-perl' --intrusive
 
-(cd $TARGET_DIR && debuild debuild --no-tgz-check -us -uc)
+(cd $TARGET_DIR && debuild --no-tgz-check -us -uc)
 
 
