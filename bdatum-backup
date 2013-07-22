@@ -42,7 +42,7 @@ use File::Basename;
 use Config::Any::INI;
 
 use version;
-our $VERSION = '0.04';
+our $VERSION = qv('0.04');
 
 $0 = "[$0 $VERSION]";
 
@@ -495,6 +495,12 @@ sub _read_cache {
   my $cache_file =
     "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
   my %cache;
+  my $cache_file_version = &_filename_cache_version( $cache_file );
+
+  my $cache_version = &_read_cache_version($cache_file_version);
+  if ( version->parse($cache_version) != version->parse($VERSION) ) {
+    unlink( $cache_file );
+  }
 
   my $fh = IO::File->new( $cache_file, O_RDONLY|O_CREAT, ':unix:encoding(UTF-8)' )
     or die "Cannot open $cache_file";
@@ -524,12 +530,32 @@ sub _read_cache {
   return %cache;
 }
 
+sub _filename_cache_version {
+    join('.', shift , 'version');
+}
+
+sub _update_cache_version {
+    my $filename = shift;
+    my $fh = IO::File->new( $filename, 'w', ':unix' )
+      or die "Cannot open $filename";
+    print $fh $VERSION;
+}
+
+sub _read_cache_version {
+    my $filename = shift;
+    return qv(0) unless -r $filename;
+    my $content = do { local ( @ARGV, $/ ) = $filename; <> };
+    return $content if qv($content)->is_qv;
+    return qv(0);
+}
+
 sub _write_cache {
   my (%cache)     = @_;
   my $t           = time;
   my $b_datum_dir = "$ENV{HOME}/.b-datum";
   my $cache_file =
     "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
+  my $cache_file_version = &_filename_cache_version( $cache_file );
 
   my $fh = IO::File->new( $cache_file, 'w', ':unix' )
     or die "Cannot open $cache_file";
