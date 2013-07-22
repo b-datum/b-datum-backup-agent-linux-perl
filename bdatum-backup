@@ -47,7 +47,7 @@ our $VERSION = qv('0.04');
 $0 = "[$0 $VERSION]";
 
 use constant {
-  LIMIT => 5 * 1024 * 1024,
+  LIMIT    => 5 * 1024 * 1024,
   BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
 
   # file attrs
@@ -65,7 +65,10 @@ my ( $opt, $usage ) = describe_options(
   [ "node_key|n=s"    => 'node key' ],
   [ "partner_key|p=s" => 'partner key' ],
   [ "dir|d=s"         => 'target path' ],
-  [ "nodelete|k" => 'not send DELETE to removed files' ],
+  [
+    "nodelete|k" =>
+      q{don't remove in remote storage files deleted on local disk}
+  ],
   [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
   [ "verbose|v"  => 'verbose mode', ],
   [ "config|c=s" => 'config file', ],
@@ -73,30 +76,30 @@ my ( $opt, $usage ) = describe_options(
   [ 'help|h', "print usage message and exit" ],
 );
 
-print( $usage->text ), exit( 0 ) if $opt->help;
+print( $usage->text ), exit(0) if $opt->help;
 
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
 if ( -r $configfile ) {
-    my $st = stat $configfile ;
-    my $mode = sprintf( '%04o', $st->mode & 07777 );
-    if ( $mode ne '0400' ) {
-        print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
-        exit 78;
-    }
+  my $st = stat $configfile;
+  my $mode = sprintf( '%04o', $st->mode & 07777 );
+  if ( $mode ne '0400' ) {
+    print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
+    exit 78;
+  }
 
-    my $config = Config::Any::INI->load( $configfile );
-    $node_key = $config->{ node_key };
-    $partner_key = $config->{ partner_key };
-    $path = $config->{ path };
+  my $config = Config::Any::INI->load($configfile);
+  $node_key    = $config->{node_key};
+  $partner_key = $config->{partner_key};
+  $path        = $config->{path};
 }
 
 ( $node_key, $partner_key, $path ) =
   ( $opt->node_key, $opt->partner_key, $opt->dir );
 
-if (!$node_key or !$partner_key or !$path) {
-    print "*** ERROR: Required option missing.\n";
-    exit 64;
+if ( !$node_key or !$partner_key or !$path ) {
+  print "*** ERROR: Required option missing.\n";
+  exit 64;
 }
 
 my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
@@ -113,7 +116,8 @@ $ua_cache->total_capacity(10);
 my $ua =
   LWP::UserAgent::Determined->new(
   requests_redirectable => [qw(GET HEAD DELETE PUT POST)], );
-$ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, ) if LWP::UserAgent::Determined->can('ssl_opts');
+$ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
+  if LWP::UserAgent::Determined->can('ssl_opts');
 $ua->timing('1,2,4,8,16,32');
 $ua->conn_cache($ua_cache);
 $ua->add_handler( request_prepare =>
@@ -143,11 +147,31 @@ my $files = File::Next::everything(
     # but ignore its descendants in case of being a link to dir
     file_filter => sub {
 
-      !-l dirname($File::Next::name);
+      -p $File::Next::name
+        && warn "SKIPPING: $File::Next::name is a named pipe";
+
+      -S $File::Next::name && warn "SKIPPING: $File::Next::name is a socket";
+
+      -b $File::Next::name
+        && warn "SKIPPING: $File::Next::name is a block special file";
+
+      -p $File::Next::name
+        && warn "SKIPPING: $File::Next::name is a named pipe";
+
+      -c $File::Next::name
+        && warn "SKIPPING: $File::Next::name is a character special file";
+
+      -t $File::Next::name
+        && warn "SKIPPING: $File::Next::name is is opened to a tty";
+
+      !-l dirname($File::Next::name)
+        || ( -d $File::Next::name )
+        || ( -f $File::Next::name )
+        || ( -l $File::Next::name );
     },
     descend_filter => sub {
       !-l dirname($File::Next::dir);
-      }
+    },
   },
   $path
 );
@@ -155,6 +179,7 @@ my $files = File::Next::everything(
 my $pm = Parallel::ForkManager->new( $opt->workers );
 
 start();
+
 #warn 'end';
 $pm->wait_all_children;
 exit(0);
@@ -258,7 +283,7 @@ sub get_changes {
   }
 
   # symlinks read with readlink get its MTIME changed, we can ignore if
-  # the file
+  # the file it's a link
   return $changes if -l $file && scalar @$attrs == 1 && defined $attrs->[MTIME];
 
   $changes->{modified_fields} = [@modified_fields];
@@ -494,14 +519,14 @@ sub _read_cache {
   my $cache_file =
     "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
   my %cache;
-  my $cache_file_version = &_filename_cache_version( $cache_file );
+  my $cache_file_version = &_filename_cache_version($cache_file);
 
   my $cache_version = &_read_cache_version($cache_file_version);
   if ( version->parse($cache_version) != version->parse($VERSION) ) {
     print "* Remove $cache_file_version\n";
     print "* Remove $cache_file\n";
-    unlink( $cache_file_version );
-    unlink( $cache_file );
+    unlink($cache_file_version);
+    unlink($cache_file);
   }
 
   my $fh =
@@ -534,22 +559,22 @@ sub _read_cache {
 }
 
 sub _filename_cache_version {
-    join('.', shift , 'version');
+  join( '.', shift, 'version' );
 }
 
 sub _update_cache_version {
-    my $filename = shift;
-    my $fh = IO::File->new( $filename, 'w', ':unix' )
-      or die "Cannot open $filename";
-    print $fh $VERSION;
+  my $filename = shift;
+  my $fh = IO::File->new( $filename, 'w', ':unix' )
+    or die "Cannot open $filename";
+  print $fh $VERSION;
 }
 
 sub _read_cache_version {
-    my $filename = shift;
-    return qv(0) unless -r $filename;
-    my $content = do { local ( @ARGV, $/ ) = $filename; <> };
-    return $content if qv($content)->is_qv;
-    return qv(0);
+  my $filename = shift;
+  return qv(0) unless -r $filename;
+  my $content = do { local ( @ARGV, $/ ) = $filename; <> };
+  return $content if qv($content)->is_qv;
+  return qv(0);
 }
 
 sub _write_cache {
@@ -558,7 +583,7 @@ sub _write_cache {
   my $b_datum_dir = "$ENV{HOME}/.b-datum";
   my $cache_file =
     "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
-  my $cache_file_version = &_filename_cache_version( $cache_file );
+  my $cache_file_version = &_filename_cache_version($cache_file);
   &_update_cache_version($cache_file_version);
 
   my $fh = IO::File->new( $cache_file, 'w', ':unix' )
@@ -576,4 +601,3 @@ sub _write_cache {
     . sprintf( "%.9f", ( time - $t ) )
     . "s\n ==> Done!\n";
 }
-
