@@ -42,7 +42,7 @@ use File::Basename;
 use Config::Any::INI;
 
 use version;
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 $0 = "[$0 $VERSION]";
 

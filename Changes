@@ -1,3 +1,13 @@
+Release 0.04 Mon Jul 22 14:44:51 BRT 2013
+	- check if LWP::UserAgent::Determined has ssl_opts method, because the old version of this module doesnt have this option and broke some boxes
+	- change $0 for security reasons
+	- use travisci to make more tests.
+	- update README with how to install and travisci image
+	- add packages to install and make deb package
+	- $NOT_INSTALL_PERLBREW option for travisci
+	- .gitignore
+	- cron.d example
+
 Release 0.03 Sun Jul 21 03:31:26 BRT 2013
 	- $ENV{BDATUM_BASE_URL} for local tests
 	- change for INI files, because use of YAML::Syck or YAML to parse config files is DEPRECATED.
