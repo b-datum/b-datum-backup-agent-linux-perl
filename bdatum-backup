@@ -101,7 +101,6 @@ if ( $opt->verbose ) {
 }
 
 # ,=> to avoid fat comma stringification
-
 my %metadata_map = (
   UID
   , => 'meta-uid',
@@ -119,12 +118,12 @@ my $files = File::Next::everything(
 
     # but ignore its descendants in case of being a link to dir
     file_filter => sub {
-      
+
       !-l dirname($File::Next::name);
     },
     descend_filter => sub {
       !-l dirname($File::Next::dir);
-    }
+      }
   },
   $path
 );
@@ -139,7 +138,7 @@ exit(0);
 sub start {
   my %cache = _read_cache();
   my $start = DateTime->now( time_zone => 'local' );
-  FILE: while ( defined( my $file = $files->() ) ) {
+FILE: while ( defined( my $file = $files->() ) ) {
 
     print "processing: $file\n";
     if ( -d $file ) {
@@ -205,8 +204,8 @@ sub get_changes {
   my ( $file, $attrs ) = @_;
   return unless defined $attrs && ( ref $attrs eq 'ARRAY' );
 
-  my $stat            = File::stat::stat($file) or return;
-  my $etag            = -l $file ? md5_hex('') : file_md5_hex($file);
+  my $stat = File::stat::stat($file) or return;
+  my $etag = -l $file ? md5_hex('') : file_md5_hex($file);
   my @modified_fields = ();
 
   my $new_attrs = [
@@ -472,12 +471,13 @@ sub _read_cache {
     "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
   my %cache;
 
-  my $fh = IO::File->new( $cache_file, O_RDONLY|O_CREAT, ':unix:encoding(UTF-8)' )
+  my $fh =
+    IO::File->new( $cache_file, O_RDONLY | O_CREAT, ':unix:encoding(UTF-8)' )
     or die "Cannot open $cache_file";
 
   my $t = time;
   my @to_delete;
-  while (my $line = $fh->getline) {
+  while ( my $line = $fh->getline ) {
     my $attrs = [ split /,/, $line ];
     my $file = shift @$attrs;
     if ( !-e $file ) {
