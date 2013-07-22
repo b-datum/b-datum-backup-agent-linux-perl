@@ -6,6 +6,7 @@ perl:
 script: 
   - make test install
   - NOT_INSTALL_PERLBREW=1 bash install.sh
+after_sucess:
   - (cd ../ && bash b-datum-backup-agent-linux-perl/scripts/debpackage.sh )
   - (cd ../ && sudo apt-get install -qq gdebi b-datum-backup-perl_0.03-1_all.deb )
 before_install:
