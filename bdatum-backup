@@ -556,6 +556,7 @@ sub _write_cache {
   my $cache_file =
     "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
   my $cache_file_version = &_filename_cache_version( $cache_file );
+  &_update_cache_version($cache_file_version);
 
   my $fh = IO::File->new( $cache_file, 'w', ':unix' )
     or die "Cannot open $cache_file";
