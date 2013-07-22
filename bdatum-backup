@@ -42,7 +42,9 @@ use File::Basename;
 use Config::Any::INI;
 
 use version;
-our $VERSION = '0.03';
+our $VERSION = '0.04';
+
+$0 = "[$0 $VERSION]";
 
 use constant {
   LIMIT => 5 * 1024 * 1024,
@@ -111,10 +113,9 @@ $ua_cache->total_capacity(10);
 my $ua =
   LWP::UserAgent::Determined->new(
   requests_redirectable => [qw(GET HEAD DELETE PUT POST)], );
+$ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, ) if LWP::UserAgent::Determined->can('ssl_opts');
 $ua->timing('1,2,4,8,16,32');
 $ua->conn_cache($ua_cache);
-$ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, );
-
 $ua->add_handler( request_prepare =>
     sub { shift->authorization_basic( $node_key, $partner_key ); } );
 
