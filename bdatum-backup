@@ -3,7 +3,6 @@
 package main;
 
 use utf8;
-
 use strict;
 use warnings;
 use Carp;
@@ -22,9 +21,13 @@ use Digest::MD5 qw(md5_hex);
 use File::Next;
 use Encode;
 
+use Fcntl qw(:flock SEEK_END);
+use File::Slurp qw(read_file);
 use JSON qw(encode_json decode_json);
 use IO::Handle;
 use IO::File;
+use File::Temp qw/ :seekable /;
+
 use Cwd qw(abs_path);
 use Getopt::Long::Descriptive;
 use File::MimeInfo::Magic;
@@ -39,6 +42,8 @@ use List::MoreUtils qw(pairwise);
 
 use File::stat;
 use File::Basename;
+
+#use File::Flock;
 use Config::INI::Reader;
 
 use version;
@@ -79,6 +84,9 @@ my ( $opt, $usage ) = describe_options(
 );
 
 print( $usage->text ), exit(0) if $opt->help;
+
+my $manifest = File::Temp->new( UNLINK => 0, )
+  or die q{Couldn't create manifest file};
 
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
@@ -184,12 +192,17 @@ my $pm = Parallel::ForkManager->new( $opt->workers );
 
 start();
 
-#warn 'end';
 $pm->wait_all_children;
+
+_send_manifest();
+close($manifest);
+unlink($manifest);
+
 exit(0);
 
 sub start {
   my %cache = _read_cache();
+
   my $start = DateTime->now( time_zone => 'local' );
 FILE: while ( defined( my $file = $files->() ) ) {
 
@@ -255,9 +268,10 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
 sub get_changes {
   my ( $file, $attrs ) = @_;
-  return unless defined $attrs && ( ref $attrs eq 'ARRAY' );
 
-  my $stat = File::stat::stat($file) or return;
+  return unless defined $attrs && ( ref $attrs eq 'ARRAY' );
+  my $stat = ( -l $file ? File::stat::lstat($file) : File::stat::stat($file) )
+    or return;
   my $etag = -l $file ? md5_hex('') : file_md5_hex($file);
   my @modified_fields = ();
 
@@ -278,6 +292,7 @@ sub get_changes {
   push @modified_fields,
     grep { $attrs->[$_] ne $new_attrs->[$_] }
     ( MTIME, ETAG, UID, GID, UMASK, SYMLINK );
+
 
   {
     no warnings qw(once);
@@ -329,6 +344,18 @@ sub send_file {
 
   print "DONE\n";
 
+}
+
+sub _send_manifest {
+  my $uri = URI->new(BASE_URL);
+  $uri->path('storage/manifest');
+
+  my $etag = file_md5_hex( $manifest->filename );
+
+  my $req = PUT $uri,
+    Etag    => $etag,
+    Content => read_file( $manifest->filename );
+  my $res = _send_request($req);
 }
 
 sub _send_multipart {
@@ -409,6 +436,12 @@ sub _send_multipart {
     );
   _send_request($req);
   print "done!\n";
+
+  lock($manifest);
+  $manifest->seek( 0, SEEK_END );
+  print $manifest "+$file\n+${\(-s $file)}\n+$full_etag\n\n";
+  unlock($manifest);
+
   return 1;
 
 }
@@ -450,6 +483,12 @@ sub _delete {
   my $req = DELETE $uri;
   STDOUT->printflush("* deleting $file ... \n");
   my $res = $ua->request($req);
+
+  lock($manifest);
+  $manifest->seek( 0, SEEK_END );
+  print $manifest "-$file\n\n";
+  unlock($manifest);
+
   return $res->is_success;
 }
 
@@ -458,7 +497,7 @@ sub _send_default {
   my $uri = URI->new(BASE_URL);
   $uri->path('/storage');
 
-  my $etag = $attrs->[ETAG];
+  my $etag = -l $file ? md5_hex('') : $attrs->[ETAG];
 
   return 1
     if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
@@ -472,6 +511,12 @@ sub _send_default {
     ( !-l $file ? ( value => [$file] ) : () )
     ];
   _send_request($req);
+
+  lock($manifest);
+  $manifest->seek( 0, SEEK_END );
+  print $manifest "+$file\n+${\(-s $file)}\n+$etag\n\n";
+  unlock($manifest);
+
   return 1;
 
 }
@@ -488,6 +533,12 @@ sub _check_duplicate {
     _get_metadata( $file, $attrs )
     ];
   my $res = $ua->request($req);
+  if ( $res->code == 201 ) {
+    lock($manifest);
+    $manifest->seek( 0, SEEK_END );
+    print $manifest "+$file\n+${\(-s $file)}\n+$etag\n\n";
+    unlock($manifest);
+  }
   return $res->is_success;
 }
 
@@ -533,16 +584,18 @@ sub _read_cache {
     unlink($cache_file);
   }
 
-  my $fh =
-    IO::File->new( $cache_file, O_RDONLY | O_CREAT, ':unix:encoding(UTF-8)' )
+  return () unless -e $cache_file;
+
+  open( my $fh, '<:unix:encoding(UTF-8)', $cache_file )
     or die "Cannot open $cache_file";
 
   my $t = time;
   my @to_delete;
   while ( my $line = $fh->getline ) {
     my $attrs = [ split /,/, $line ];
-    my $file = shift @$attrs;
-    if ( !-e $file ) {
+    my $file  = shift @$attrs;
+    my $stat  = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
+    if ( !-e $stat ) {
       if ( !$opt->nodelete ) {
         push( @to_delete, $file );
       }
@@ -553,6 +606,7 @@ sub _read_cache {
   }
   print '* Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s\n";
 
+  close($fh);
   undef($fh);
 
   if ( !$opt->nodelete && @to_delete ) {
@@ -590,7 +644,7 @@ sub _write_cache {
   my $cache_file_version = &_filename_cache_version($cache_file);
   &_update_cache_version($cache_file_version);
 
-  my $fh = IO::File->new( $cache_file, 'w', ':unix' )
+  open( my $fh, '>:unix', $cache_file )
     or die "Cannot open $cache_file";
 
   print {$fh}
@@ -605,3 +659,17 @@ sub _write_cache {
     . sprintf( "%.9f", ( time - $t ) )
     . "s\n ==> Done!\n";
 }
+
+
+
+sub lock {
+  my ($fh) = @_;
+  flock( $fh, LOCK_EX ) or die "Cannot lock mailbox - $!\n";
+  seek( $fh, 0, SEEK_END ) or die "Cannot seek - $!\n";
+}
+
+sub unlock {
+  my ($fh) = @_;
+  flock( $fh, LOCK_UN ) or die "Cannot unlock mailbox - $!\n";
+}
+

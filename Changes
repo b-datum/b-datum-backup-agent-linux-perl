@@ -1,3 +1,8 @@
+Release 0.05 Tue Jul 23 18:15:52 BRT 2013
+        - adding support for profiles in config
+	- adding support for manifest files
+	- fix for dealing with symlinks
+
 Release 0.04 Mon Jul 22 14:44:51 BRT 2013
 	- check if LWP::UserAgent::Determined has ssl_opts method, because the old version of this module doesnt have this option and broke some boxes
 	- change $0 for security reasons
