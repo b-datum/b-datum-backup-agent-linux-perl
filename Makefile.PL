@@ -1,5 +1,6 @@
 use ExtUtils::MakeMaker;
 
+WriteMakefile(
   NAME         => 'bdatum-backup',
   VERSION      => '0.08',
   ABSTRACT     => 'b-datum backup',
