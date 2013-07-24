@@ -151,6 +151,7 @@ my %metadata_map = (
 
 my $files = File::Next::everything(
   {
+    error_handler => sub {warn @_;},
     # show symlinks
     follow_symlinks => 1,
 
@@ -174,10 +175,14 @@ my $files = File::Next::everything(
       -t $File::Next::name
         && warn "SKIPPING: $File::Next::name is is opened to a tty";
 
-      !-l dirname($File::Next::name)
-        || ( -d $File::Next::name )
+      !-R $File::Next::name
+        && warn "SKIPPING: $File::Next::name can't be read";
+
+
+      -R $File::Next::name && !-l dirname($File::Next::name)
+        && ( ( -d $File::Next::name && -x $File::Next::name)
         || ( -f $File::Next::name )
-        || ( -l $File::Next::name );
+        || ( -l $File::Next::name ) );
     },
     descend_filter => sub {
       !-l dirname($File::Next::dir);
@@ -193,6 +198,7 @@ start();
 $pm->wait_all_children;
 
 _send_manifest();
+
 close($manifest);
 unlink($manifest);
 
@@ -291,7 +297,6 @@ sub get_changes {
     grep { $attrs->[$_] ne $new_attrs->[$_] }
     ( MTIME, ETAG, UID, GID, UMASK, SYMLINK );
 
-
   {
     no warnings qw(once);
 
@@ -352,7 +357,7 @@ sub _send_manifest {
 
   my $req = PUT $uri,
     Etag    => $etag,
-    Content => read_file( $manifest->filename );
+    Content => scalar read_file( $manifest->filename );
   my $res = _send_request($req);
 }
 
@@ -657,8 +662,6 @@ sub _write_cache {
     . sprintf( "%.9f", ( time - $t ) )
     . "s\n ==> Done!\n";
 }
-
-
 
 sub lock {
   my ($fh) = @_;
