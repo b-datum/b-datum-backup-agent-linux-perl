@@ -1,3 +1,7 @@
+Release 0.07 Wed Jul 24 19:22:40 BRT 2013
+        - fixed bug in sending manifest file
+        - skipping pipes, sockets, mounting points, etc..
+
 Release 0.06 Wed Jul 24 10:57:32 BRT 2013
         - fix dependencies declation
 
