@@ -1,3 +1,7 @@
+Release 0.08 Wed Jul 24 20:05:05 BRT 2013
+        - bdatum-config for create config file
+	- run bdatum-config in debian/postinst
+
 Release 0.07 Wed Jul 24 19:22:40 BRT 2013
         - fixed bug in sending manifest file
         - skipping pipes, sockets, mounting points, etc..
