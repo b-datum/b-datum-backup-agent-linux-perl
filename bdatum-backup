@@ -45,8 +45,7 @@ use File::Basename;
 
 use Config::INI::Reader;
 
-use version;
-our $VERSION = qv('0.05');
+use version; our $VERSION = qv('0.05'); # same line, keep backcompat with older MakeMaker
 
 $0 = "[$0 $VERSION]";
 
