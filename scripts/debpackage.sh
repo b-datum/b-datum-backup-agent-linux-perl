@@ -13,7 +13,7 @@ if ! which dh-make-perl >/dev/null; then
 fi
 
 if ! which debuild >/dev/null; then
-	echo "please, install debuild." 1>&2
+	echo "please, install devscripts." 1>&2
 	exit
 fi
 

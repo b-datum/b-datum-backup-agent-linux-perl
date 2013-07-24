@@ -43,11 +43,10 @@ use List::MoreUtils qw(pairwise);
 use File::stat;
 use File::Basename;
 
-#use File::Flock;
 use Config::INI::Reader;
 
 use version;
-our $VERSION = qv('0.04');
+our $VERSION = qv('0.05');
 
 $0 = "[$0 $VERSION]";
 
