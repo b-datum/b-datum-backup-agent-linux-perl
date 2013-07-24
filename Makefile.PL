@@ -35,7 +35,8 @@ WriteMakefile(
     'List::MoreUtils'            => 0,
     'Config::INI'                => 0,
     'File::Slurp'                => 0,
-    'File::Temp'                 => 0
+    'File::Temp'                 => 0,
+    'Config::INI::Reader'        => 0,
   }
 );
 
