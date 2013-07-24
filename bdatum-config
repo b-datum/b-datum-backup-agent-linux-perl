@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# bdatum-config
+# Copyright (c) 2013 Thiago Rondon, b-datum.
+# http://www.b-datum.com/
+
+which dialog &> /dev/null
+[ $? -ne 0 ]  && echo "Dialog utility is not available, Install it" && exit 1
+
+if [ "$(id -u)" != "0" ]; then
+   echo "This script just can be run as root" 1>&2
+   exit 1
+fi
+
+APP="b-datum backup config tool"
+TMPFILE=`tempfile`
+ETC=/etc/bdatum/backup.conf
+ETCBKP=/etc/bdatum/backup.conf.bkp
+mkdir -p `dirname $ETC`
+
+function _get_nodekey(){
+	NODEKEY=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter your node key:" 10 30)
+}
+
+function _get_partnerkey() {
+	PARTNERKEY=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter your partner key:" 10 30)
+}
+
+function _get_pathdir() {
+	PATHDIR=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter backup directory:" 10 30)
+}
+
+function _save_tmpfile() {
+	FILECONTENT="
+node_key=$NODEKEY
+partner_key=$PARTNERKEY
+path=$PATHDIR
+
+# You can also use profiles.
+# Values setted here take precedence over default values.
+# [profile1]
+# node_key=another_key
+# partner_key=another_key
+# path=another_path
+"
+	echo "$FILECONTENT" > $TMPFILE
+	dialog --backtitle "$APP" --title "$ETC" --textbox $TMPFILE 22 70
+	if [ -f $ETC ] ; then
+		echo "Move $ETC to $ETCBKP..."
+		mv -f $ETC $ETCBKP
+	fi
+	echo "Save the new config in $ETC..."
+	mv -f $TMPFILE $ETC
+}
+
+function _ask_to_continue() {
+	msg=$1
+	dialog --backtitle "$APP" --yesno "$msg\nDo you like to continue this setup?" 6 50
+	response=$?
+	if [ $response == 1 ] ; then
+		exit
+	fi
+}
+
+while [ 1 ] ; do
+	_get_nodekey
+	if [ ${#NODEKEY} == 20 ] ; then
+		break
+	fi
+	_ask_to_continue "Node key must be 20 characters"
+done
+
+while [ 1 ] ; do
+	_get_partnerkey
+	if [ ${#PARTNERKEY} == 20 ] ; then
+		break
+	fi
+	_ask_to_continue "Partner key must be 20 characters"
+done
+
+while [ 1 ] ; do
+	_get_pathdir
+	if [ -d $PATHDIR ] ; then
+		break
+	fi
+	_ask_to_continue "This is not a directory."
+done
+
+_save_tmpfile
+

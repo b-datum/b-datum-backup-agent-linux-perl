@@ -1,4 +1,5 @@
 bdatum-backup
+bdatum-config
 Changes
 etc/bdatum/backup.conf
 etc/cron.d/bdatum-backup

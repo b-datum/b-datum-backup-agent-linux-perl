@@ -5,7 +5,7 @@ WriteMakefile(
   VERSION    => '0.05',
   ABSTRACT   => 'b-datum backup',
   LICENSE    => 'GPLv3',
-  EXE_FILES  => ['bdatum-backup'],
+  EXE_FILES  => ['bdatum-backup', 'bdatum-config'],
   META_MERGE => {
     repository => {
       type => 'git',
