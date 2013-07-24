@@ -1,12 +1,11 @@
 use ExtUtils::MakeMaker;
 
-WriteMakefile(
   NAME         => 'bdatum-backup',
   VERSION      => '0.07',
   ABSTRACT     => 'b-datum backup',
   LICENSE      => 'GPLv3',
-  EXE_FILES    => ['bdatum-backup'],
-  META_MERGE   => {
+  EXE_FILES  => ['bdatum-backup', 'bdatum-config'],
+  META_MERGE => {
     repository => {
       type => 'git',
       url  => 'git@github.com:b-datum/b-datum-backup-agent-linux-perl.git',
