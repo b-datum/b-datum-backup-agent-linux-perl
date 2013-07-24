@@ -51,6 +51,7 @@ path=$PATHDIR
 	fi
 	echo "Save the new config in $ETC..."
 	mv -f $TMPFILE $ETC
+	chmod 0400 $ETC
 }
 
 function _ask_to_continue() {
