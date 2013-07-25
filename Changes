@@ -1,3 +1,7 @@
+Release 0.09 Thu Jul 25 10:31:13 BRT 2013
+        - fixed bugs in Makefile.PL
+	- function for write manifest file
+
 Release 0.08 Wed Jul 24 23:37:00 BRT 2013
         - bdatum-config for create config file
 	- run bdatum-config in debian/postinst
