@@ -68,7 +68,7 @@ my ( $opt, $usage ) = describe_options(
   "$0 $VERSION - %o <some-arg>",
   [ "node_key|n=s"    => 'node key' ],
   [ "partner_key|p=s" => 'partner key' ],
-  [ "path|p=s"         => 'target path' ],
+  [ "path=s"          => 'target path' ],
   [
     "nodelete|k" =>
       q{don't remove in remote storage files deleted on local disk}
