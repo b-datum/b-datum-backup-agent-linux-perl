@@ -99,12 +99,19 @@ if ( -r $configfile ) {
     exit 78;
   }
 
-  my $config = Config::Any::INI->load($configfile);
-  my $profile = $opt->profile || '_';
-  $node_key = $config->{$profile}->{node_key} || $config->{_}->{node_key};
-  $partner_key =
-    $config->{$profile}->{partner_key} || $config->{_}->{partner_key};
-  $path = $config->{$profile}->{path} || $config->{_}->{path};
+  my $config  = Config::Any::INI->load($configfile);
+  my $profile = $opt->profile;
+
+  if ($profile) {
+    $node_key = $config->{$profile}->{node_key};
+    $partner_key = $config->{$profile}->{partner_key};
+    $path = $config->{$profile}->{path};
+  } else {
+    $node_key = $config->{node_key}; 
+    $partner_key = $config->{partner_key};
+    $path = $config->{path};
+  }
+
 }
 
 ( $node_key, $partner_key, $path ) =
