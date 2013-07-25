@@ -114,14 +114,14 @@ sub _log_debug {
     print "[debug] $msg\n";
 }
 
-&_log_debug( "Node key: $node_key" );
-&_log_debug( "Partner key: $partner_key" );
-&_log_debug( "Path: $path" );
-
 if ( !$node_key or !$partner_key or !$path ) {
   print "*** ERROR: Required option missing.\n";
   exit 64;
 }
+
+&_log_debug( "Node key: $node_key" );
+&_log_debug( "Partner key: $partner_key" );
+&_log_debug( "Path: $path" );
 
 my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
 my $context   = IO::Socket::SSL::SSL_Context->new(
