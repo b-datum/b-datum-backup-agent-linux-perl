@@ -114,8 +114,9 @@ if ( -r $configfile ) {
 
 }
 
-( $node_key, $partner_key, $path ) =
-  ( $opt->node_key, $opt->partner_key, $opt->path );
+$node_key = $opt->node_key if $opt->node_key;
+$partner_key = $opt->partner_key if $opt->partner_key;
+$path = $opt->path;
 
 sub _log_debug {
     return unless $opt->debug;
