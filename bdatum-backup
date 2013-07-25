@@ -21,6 +21,8 @@ use Digest::MD5 qw(md5_hex);
 use File::Next;
 use Encode;
 
+use List::Util qw(first);
+
 use Fcntl qw(:flock SEEK_END);
 use File::Slurp qw(read_file);
 use JSON qw(encode_json decode_json);
@@ -62,7 +64,7 @@ use constant {
   SYMLINK => 5
 };
 
-my ( $node_key, $partner_key, $path );
+my ( $node_key, $partner_key, $path, @blacklist );
 
 my ( $opt, $usage ) = describe_options(
   "$0 - %o <some-arg>",
@@ -119,20 +121,21 @@ if ( -r $configfile ) {
     &_log_error("Please run 'chmod 0400 $configfile'", 78);
   }
 
-  my $config  = Config::Any::INI->load($configfile);
-  my $profile = $opt->profile;
+  my $config_all = Config::Any::INI->load($configfile);
+  my $profile    = $opt->profile;
 
-  if ($profile) {
-    $node_key    = $config->{$profile}->{node_key};
-    $partner_key = $config->{$profile}->{partner_key};
-    $path        = $config->{$profile}->{path};
-  }
-  else {
-    $node_key    = $config->{node_key};
-    $partner_key = $config->{partner_key};
-    $path        = $config->{path};
-  }
+  my $config =
+    defined $profile
+    && exists $config_all->{$profile} ? $config_all->{$profile} : $config_all;
 
+  $node_key    = $config->{node_key};
+  $partner_key = $config->{partner_key};
+  $path        = $config->{path};
+  @blacklist   = map {
+    my $r = _glob2pat( $config->{blacklist}->{$_} );
+    eval { qr/$r/ }
+      or die qq{Blacklist item "$_" is not a valid wildcard};
+  } keys %{ $config->{blacklist} || {} };
 }
 
 $node_key    = $opt->node_key    if $opt->node_key;
@@ -200,6 +203,11 @@ my %metadata_map = (
   SYMLINK, => 'meta-symlink',
 );
 
+sub _warn {
+  print "! @_\n";
+  return 1;
+}
+
 my $files = File::Next::everything(
   {
     error_handler => sub { warn @_; },
@@ -211,26 +219,35 @@ my $files = File::Next::everything(
     file_filter => sub {
 
       -p $File::Next::name
-        && warn "SKIPPING: $File::Next::name is a named pipe";
+        && _warn("SKIPPING: $File::Next::name is a named pipe")
+        && return;
 
-      -S $File::Next::name && warn "SKIPPING: $File::Next::name is a socket";
+      -S $File::Next::name
+        && _warn("SKIPPING: $File::Next::name is a socket")
+        && return;
 
       -b $File::Next::name
-        && warn "SKIPPING: $File::Next::name is a block special file";
+        && _warn("SKIPPING: $File::Next::name is a block special file")
+        && return;
 
       -p $File::Next::name
-        && warn "SKIPPING: $File::Next::name is a named pipe";
+        && _warn("SKIPPING: $File::Next::name is a named pipe")
+        && return;
 
       -c $File::Next::name
-        && warn "SKIPPING: $File::Next::name is a character special file";
+        && _warn("SKIPPING: $File::Next::name is a character special file")
+        && return;
 
       -t $File::Next::name
-        && warn "SKIPPING: $File::Next::name is is opened to a tty";
+        && _warn("SKIPPING: $File::Next::name is is opened to a tty")
+        && return;
 
-      !-R $File::Next::name
-        && warn "SKIPPING: $File::Next::name can't be read";
+           !-R $File::Next::name
+        && !-l $File::Next::name
+        && _warn("SKIPPING: $File::Next::name can't be read")
+        && return;
 
-      -R $File::Next::name
+      !_in_blacklist($File::Next::name)
         && !-l dirname($File::Next::name)
         && ( ( -d $File::Next::name && -x $File::Next::name )
         || ( -f $File::Next::name )
@@ -297,8 +314,9 @@ FILE: while ( defined( my $file = $files->() ) ) {
             }
           }
           else {
-            send_file( $file,
-              $change_specs ? $change_specs->{attributes} : \@previous_attrs );
+            send_file( $file, $change_specs
+              ? $change_specs->{attributes}
+              : \@previous_attrs );
           }
         }
 
@@ -320,6 +338,25 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   _write_cache(%cache);
 
+}
+
+sub _glob2pat {
+  my $globstr = shift;
+  my %patmap  = (
+    '*' => '.*',
+    '?' => '.',
+    '[' => '[',
+    ']' => ']',
+  );
+  $globstr =~ s{(.)} { $patmap{$1} || "\Q$1" }ge;
+  return '^' . $globstr . '$';
+}
+
+sub _in_blacklist {
+  my $file = shift;
+  my $yes = first { $file =~ $_ } @blacklist;
+  _warn("SKIPPING: $file is in blacklist") if $yes;
+  return $yes;
 }
 
 sub get_changes {
@@ -358,7 +395,8 @@ sub get_changes {
 
   # symlinks read with readlink get its MTIME changed, we can ignore if
   # the file it's a link
-  return $changes if -l $file && scalar @$attrs == 1 && defined $attrs->[MTIME];
+  return $changes
+    if -l $file && scalar @$attrs == 1 && defined $attrs->[MTIME];
 
   $changes->{modified_fields} = [@modified_fields];
 
@@ -569,7 +607,8 @@ sub _send_default {
     ];
   _send_request($req);
 
-  _write_to_manifest( $manifest, "+$file\n+${\(-s $file)}\n+$etag\n\n" );
+  my $stat = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
+  _write_to_manifest( $manifest, "+$file\n+${\(-s $stat)}\n+$etag\n\n" );
 
   return 1;
 
@@ -588,7 +627,8 @@ sub _check_duplicate {
     ];
   my $res = $ua->request($req);
   if ( $res->code == 201 ) {
-    _write_to_manifest( $manifest, "+$file\n+${\(-s $file)}\n+$etag\n\n" );
+    my $stat = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
+    _write_to_manifest( $manifest, "+$file\n+${\(-s $stat)}\n+$etag\n\n" );
   }
   return $res->is_success;
 }
@@ -707,7 +747,7 @@ sub _write_cache {
   print {$fh}
     map {
     my $attrs = $cache{$_};
-    Encode::encode_utf8( join( q{,}, $_, @$attrs, "\n" ) );
+    Encode::encode_utf8( join( q{,}, $_, @$attrs). "\n" );
     }
     keys %cache;
 
