@@ -71,16 +71,15 @@ my ( $opt, $usage ) = describe_options(
   [ "path=s"          => 'target path' ],
   [],
   [
-    "nodelete|k" =>
-      q{don't remove in remote storage files deleted}
+    "nodelete|k" => q{don't remove in remote storage files deleted}
   ],
-  [ "workers|w"   => 'number of workers (default: 5)', { default => 5 } ],
-  [ "config|c=s"  => 'config file', ],
-  [ "profile=s" => 'load profile', ],
-  
+  [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
+  [ "config|c=s" => 'config file', ],
+  [ "profile=s"  => 'load profile', ],
+
   [],
-  [ "verbose|v"   => 'verbose mode', ],
-  [ "debug|d"     => 'debug mode' ],
+  [ "verbose|v" => 'verbose mode', ],
+  [ "debug|d"   => 'debug mode' ],
   [ 'help|h', "print usage message and exit" ],
 );
 
@@ -96,42 +95,43 @@ if ( -r $configfile ) {
   my $mode = sprintf( '%04o', $st->mode & 07777 );
   if ( $mode ne '0400' ) {
     print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
-    exit 78; # EX_CONFIG
+    exit 78;    # EX_CONFIG
   }
 
   my $config  = Config::Any::INI->load($configfile);
   my $profile = $opt->profile;
 
   if ($profile) {
-    $node_key = $config->{$profile}->{node_key};
+    $node_key    = $config->{$profile}->{node_key};
     $partner_key = $config->{$profile}->{partner_key};
-    $path = $config->{$profile}->{path};
-  } else {
-    $node_key = $config->{node_key}; 
+    $path        = $config->{$profile}->{path};
+  }
+  else {
+    $node_key    = $config->{node_key};
     $partner_key = $config->{partner_key};
-    $path = $config->{path};
+    $path        = $config->{path};
   }
 
 }
 
-$node_key = $opt->node_key if $opt->node_key;
+$node_key    = $opt->node_key    if $opt->node_key;
 $partner_key = $opt->partner_key if $opt->partner_key;
-$path = $opt->path if $opt->path;
+$path        = $opt->path        if $opt->path;
 
 sub _log_debug {
-    return unless $opt->debug;
-    my $msg = shift;
-    print "[debug] $msg\n";
+  return unless $opt->debug;
+  my $msg = shift;
+  print "[debug] $msg\n";
 }
 
 if ( !$node_key or !$partner_key or !$path ) {
   print "*** ERROR: Required option missing.\n";
-  exit 64; # EX_USAGE
+  exit 64;    # EX_USAGE
 }
 
-&_log_debug( "Node key: $node_key" );
-&_log_debug( "Partner key: $partner_key" );
-&_log_debug( "Path: $path" );
+&_log_debug("Node key: $node_key");
+&_log_debug("Partner key: $partner_key");
+&_log_debug("Path: $path");
 
 my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
 my $context   = IO::Socket::SSL::SSL_Context->new(
@@ -172,7 +172,8 @@ my %metadata_map = (
 
 my $files = File::Next::everything(
   {
-    error_handler => sub {warn @_;},
+    error_handler => sub { warn @_; },
+
     # show symlinks
     follow_symlinks => 1,
 
@@ -199,9 +200,9 @@ my $files = File::Next::everything(
       !-R $File::Next::name
         && warn "SKIPPING: $File::Next::name can't be read";
 
-
-      -R $File::Next::name && !-l dirname($File::Next::name)
-        && ( ( -d $File::Next::name && -x $File::Next::name)
+      -R $File::Next::name
+        && !-l dirname($File::Next::name)
+        && ( ( -d $File::Next::name && -x $File::Next::name )
         || ( -f $File::Next::name )
         || ( -l $File::Next::name ) );
     },
@@ -461,13 +462,18 @@ sub _send_multipart {
   _send_request($req);
   print "done!\n";
 
-  lock($manifest);
-  $manifest->seek( 0, SEEK_END );
-  print $manifest "+$file\n+${\(-s $file)}\n+$full_etag\n\n";
-  unlock($manifest);
+  _write_to_manifest( $manifest, "+$file\n+${\(-s $file)}\n+$full_etag\n\n" );
 
   return 1;
 
+}
+
+sub _write_to_manifest {
+  my ( $manifest_file, $line ) = @_;
+  lock($manifest_file);
+  $manifest_file->seek( 0, SEEK_END );
+  print $manifest_file $line;
+  unlock($manifest_file);
 }
 
 sub _get_metadata {
@@ -508,10 +514,7 @@ sub _delete {
   STDOUT->printflush("* deleting $file ... \n");
   my $res = $ua->request($req);
 
-  lock($manifest);
-  $manifest->seek( 0, SEEK_END );
-  print $manifest "-$file\n\n";
-  unlock($manifest);
+  _write_to_manifest( $manifest, "-$file\n\n" );
 
   return $res->is_success;
 }
@@ -536,10 +539,7 @@ sub _send_default {
     ];
   _send_request($req);
 
-  lock($manifest);
-  $manifest->seek( 0, SEEK_END );
-  print $manifest "+$file\n+${\(-s $file)}\n+$etag\n\n";
-  unlock($manifest);
+  _write_to_manifest( $manifest, "+$file\n+${\(-s $file)}\n+$etag\n\n" );
 
   return 1;
 
@@ -558,10 +558,7 @@ sub _check_duplicate {
     ];
   my $res = $ua->request($req);
   if ( $res->code == 201 ) {
-    lock($manifest);
-    $manifest->seek( 0, SEEK_END );
-    print $manifest "+$file\n+${\(-s $file)}\n+$etag\n\n";
-    unlock($manifest);
+    _write_to_manifest( $manifest, "+$file\n+${\(-s $file)}\n+$etag\n\n" );
   }
   return $res->is_success;
 }
@@ -572,9 +569,9 @@ sub _send_request {
   my $res = $ua->request($req);
   if ( !$res->is_success ) {
     confess $res->as_string;
-    if ($res->code == 401) {
+    if ( $res->code == 401 ) {
       print "*** ERROR: 401 http unauthorized\n";
-      exit 77; # EX_NOPERM
+      exit 77;    # EX_NOPERM
     }
   }
   return $res;
