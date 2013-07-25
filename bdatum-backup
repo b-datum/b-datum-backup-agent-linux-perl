@@ -75,6 +75,7 @@ my ( $opt, $usage ) = describe_options(
   ],
   [ "workers|w"   => 'number of workers (default: 5)', { default => 5 } ],
   [ "verbose|v"   => 'verbose mode', ],
+  [ "debug|d"     => 'debug mode' ],
   [ "config|c=s"  => 'config file', ],
   [ "profile|y=s" => 'load profile', ],
   [],
@@ -106,6 +107,16 @@ if ( -r $configfile ) {
 
 ( $node_key, $partner_key, $path ) =
   ( $opt->node_key, $opt->partner_key, $opt->path );
+
+sub _log_debug {
+    return unless $opt->debug;
+    my $msg = shift;
+    print "[debug] $msg\n";
+}
+
+&_log_debug( "Node key: $node_key" );
+&_log_debug( "Partner key: $partner_key" );
+&_log_debug( "Path: $path" );
 
 if ( !$node_key or !$partner_key or !$path ) {
   print "*** ERROR: Required option missing.\n";
