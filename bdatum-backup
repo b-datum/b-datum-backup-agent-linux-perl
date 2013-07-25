@@ -65,7 +65,7 @@ use constant {
 my ( $node_key, $partner_key, $path );
 
 my ( $opt, $usage ) = describe_options(
-  "$0 $VERSION - %o <some-arg>",
+  "$0 - %o <some-arg>",
   [ "node_key|n=s"    => 'node key' ],
   [ "partner_key|p=s" => 'partner key' ],
   [ "path=s"          => 'target path' ],
