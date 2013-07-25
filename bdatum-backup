@@ -68,7 +68,7 @@ my ( $opt, $usage ) = describe_options(
   "$0 $VERSION - %o <some-arg>",
   [ "node_key|n=s"    => 'node key' ],
   [ "partner_key|p=s" => 'partner key' ],
-  [ "dir|d=s"         => 'target path' ],
+  [ "path|p=s"         => 'target path' ],
   [
     "nodelete|k" =>
       q{don't remove in remote storage files deleted on local disk}
@@ -105,7 +105,7 @@ if ( -r $configfile ) {
 }
 
 ( $node_key, $partner_key, $path ) =
-  ( $opt->node_key, $opt->partner_key, $opt->dir );
+  ( $opt->node_key, $opt->partner_key, $opt->path );
 
 if ( !$node_key or !$partner_key or !$path ) {
   print "*** ERROR: Required option missing.\n";
