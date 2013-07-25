@@ -588,16 +588,20 @@ sub _delete_files {
   $pm->wait_all_children;
 }
 
+sub _make_cache_filename {
+    my $b_datum_dir = "$ENV{HOME}/.b-datum";
+    mkdir($b_datum_dir) unless -d $b_datum_dir;
+    die "*** ERROR: Can't create directory $b_datum_dir" unless -d $b_datum_dir;
+    my $base = md5_hex( $node_key . $partner_key . $path );
+    return "$b_datum_dir/$base.cache";
+}
+
 sub _read_cache {
   #
   # Slurp cache File
   #
 
-  my $b_datum_dir = "$ENV{HOME}/.b-datum";
-  mkdir($b_datum_dir) unless -e $b_datum_dir;
-
-  my $cache_file =
-    "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
+  my $cache_file = &_make_cache_filename();
   my %cache;
   my $cache_file_version = &_filename_cache_version($cache_file);
 
@@ -663,9 +667,7 @@ sub _read_cache_version {
 sub _write_cache {
   my (%cache)     = @_;
   my $t           = time;
-  my $b_datum_dir = "$ENV{HOME}/.b-datum";
-  my $cache_file =
-    "$b_datum_dir/" . md5_hex( $node_key . $partner_key ) . '.cache';
+  my $cache_file = &_make_cache_filename();
   my $cache_file_version = &_filename_cache_version($cache_file);
   &_update_cache_version($cache_file_version);
 
