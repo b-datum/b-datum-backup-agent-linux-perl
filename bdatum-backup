@@ -69,16 +69,18 @@ my ( $opt, $usage ) = describe_options(
   [ "node_key|n=s"    => 'node key' ],
   [ "partner_key|p=s" => 'partner key' ],
   [ "path=s"          => 'target path' ],
+  [],
   [
     "nodelete|k" =>
-      q{don't remove in remote storage files deleted on local disk}
+      q{don't remove in remote storage files deleted}
   ],
   [ "workers|w"   => 'number of workers (default: 5)', { default => 5 } ],
+  [ "config|c=s"  => 'config file', ],
+  [ "profile=s" => 'load profile', ],
+  
+  [],
   [ "verbose|v"   => 'verbose mode', ],
   [ "debug|d"     => 'debug mode' ],
-  [ "config|c=s"  => 'config file', ],
-  [ "profile|y=s" => 'load profile', ],
-  [],
   [ 'help|h', "print usage message and exit" ],
 );
 
