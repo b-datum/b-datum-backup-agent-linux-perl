@@ -96,7 +96,7 @@ if ( -r $configfile ) {
   my $mode = sprintf( '%04o', $st->mode & 07777 );
   if ( $mode ne '0400' ) {
     print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
-    exit 78;
+    exit 78; # EX_CONFIG
   }
 
   my $config  = Config::Any::INI->load($configfile);
@@ -126,7 +126,7 @@ sub _log_debug {
 
 if ( !$node_key or !$partner_key or !$path ) {
   print "*** ERROR: Required option missing.\n";
-  exit 64;
+  exit 64; # EX_USAGE
 }
 
 &_log_debug( "Node key: $node_key" );
@@ -572,6 +572,10 @@ sub _send_request {
   my $res = $ua->request($req);
   if ( !$res->is_success ) {
     confess $res->as_string;
+    if ($res->code == 401) {
+      print "*** ERROR: 401 http unauthorized\n";
+      exit 77; # EX_NOPERM
+    }
   }
   return $res;
 

@@ -1,6 +1,13 @@
-Release 0.08 Wed Jul 24 20:05:05 BRT 2013
+Release 0.08 Wed Jul 24 23:37:00 BRT 2013
         - bdatum-config for create config file
 	- run bdatum-config in debian/postinst
+	- change Config::INI::Reader to Config::Any::INI
+	- change dir option in command to path, like in config file
+	- add debug mode
+	- fix short options in getopt
+	- reorganizing help message
+	- making better use of the profile
+	- not always use the args of the command line
 
 Release 0.07 Wed Jul 24 19:22:40 BRT 2013
         - fixed bug in sending manifest file
