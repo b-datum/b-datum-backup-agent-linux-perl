@@ -132,9 +132,9 @@ if ( -r $configfile ) {
   $partner_key = $config->{partner_key};
   $path        = $config->{path};
   @blacklist   = map {
-    my $r = _glob2pat( $config->{blacklist}->{$_} );
+    my $r = $config->{blacklist}->{$_};
     eval { qr/$r/ }
-      or die qq{Blacklist item "$_" is not a valid wildcard};
+      or die qq{Blacklist item "$_" is not a valid regex};
   } keys %{ $config->{blacklist} || {} };
 }
 
@@ -338,18 +338,6 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   _write_cache(%cache);
 
-}
-
-sub _glob2pat {
-  my $globstr = shift;
-  my %patmap  = (
-    '*' => '.*',
-    '?' => '.',
-    '[' => '[',
-    ']' => ']',
-  );
-  $globstr =~ s{(.)} { $patmap{$1} || "\Q$1" }ge;
-  return '^' . $globstr . '$';
 }
 
 sub _in_blacklist {
