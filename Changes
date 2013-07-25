@@ -8,6 +8,7 @@ Release 0.08 Wed Jul 24 23:37:00 BRT 2013
 	- reorganizing help message
 	- making better use of the profile
 	- not always use the args of the command line
+	- exit when _send_request get 401 http unauthorized
 
 Release 0.07 Wed Jul 24 19:22:40 BRT 2013
         - fixed bug in sending manifest file

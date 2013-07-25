@@ -33,10 +33,9 @@ WriteMakefile(
     'Time::HiRes'                => 0,
     'Perl6::Junction'            => 0,
     'List::MoreUtils'            => 0,
-    'Config::INI'                => 0,
     'File::Slurp'                => 0,
     'File::Temp'                 => 0,
-    'Config::INI::Reader'        => 0,
+    'Config::Any::INI'           => 0,
   }
 );
 
