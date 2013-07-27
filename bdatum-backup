@@ -124,9 +124,17 @@ sub _log_debug {
   print "[debug] $msg\n";
 }
 
-if ( !$node_key or !$partner_key or !$path ) {
+if ( !&_validate_key($node_key) or !&_validate_key($partner_key) or !$path ) {
   print "*** ERROR: Required option missing.\n";
   exit 64;    # EX_USAGE
+}
+
+sub _validate_key {
+    my $key = shift;
+    my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
+    print "*** ERROR: The key must be [a-zA-Z0-9]{20} --  $key\n" 
+        unless $val;
+    return $val;
 }
 
 &_log_debug("Node key: $node_key");
