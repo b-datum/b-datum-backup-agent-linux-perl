@@ -144,15 +144,15 @@ if ( !&_validate_key($node_key) or !&_validate_key($partner_key) or !&_validate_
 }
 
 sub _validate_key {
-  my $key = shift;
+  my $key = shift || return 0;
   my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
   &_log_error("The key must be [a-zA-Z0-9]{20} -- $key") unless $val;
   return $val;
 }
 
 sub _validate_path {
-  my $path = shift;
-  my $val = -d $path;
+  my $path = shift || return 0;
+  my $val = -d $path and -r $path;
   &_log_error("The directory name is invalid -- $path") unless $val;
   return $val;
 }
