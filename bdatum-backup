@@ -85,6 +85,28 @@ my ( $opt, $usage ) = describe_options(
 
 print( $usage->text ), exit(0) if $opt->help;
 
+sub _log_debug {
+  return unless $opt->debug;
+  my $msg = shift;
+  print "[debug] $msg\n";
+}
+
+sub _log_error {
+  my ($msg, $exit) = @_;
+  print "[error] $msg\n";
+  exit $exit if $exit;
+}
+
+sub _log_info {
+    my $msg = shift;
+    print "[info] $msg\n";
+}
+
+sub _log_warn {
+    my $msg = shift;
+    print "[warn] $msg\n";
+}
+
 my $manifest = File::Temp->new( UNLINK => 0, )
   or die q{Couldn't create manifest file};
 
@@ -94,8 +116,7 @@ if ( -r $configfile ) {
   my $st = stat $configfile;
   my $mode = sprintf( '%04o', $st->mode & 07777 );
   if ( $mode ne '0400' ) {
-    print "*** ERROR: Please run 'chmod 0400 $configfile'.\n";
-    exit 78;    # EX_CONFIG
+    &_log_error("Please run 'chmod 0400 $configfile'", 78);
   }
 
   my $config  = Config::Any::INI->load($configfile);
@@ -118,31 +139,22 @@ $node_key    = $opt->node_key    if $opt->node_key;
 $partner_key = $opt->partner_key if $opt->partner_key;
 $path        = $opt->path        if $opt->path;
 
-sub _log_debug {
-  return unless $opt->debug;
-  my $msg = shift;
-  print "[debug] $msg\n";
-}
-
 if ( !&_validate_key($node_key) or !&_validate_key($partner_key) or !&_validate_path($path) ) {
-  print "*** ERROR: Required option missing.\n";
-  exit 64;    # EX_USAGE
+  &_log_error("Required option missing.", 64);
 }
 
 sub _validate_key {
-    my $key = shift;
-    my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
-    print "*** ERROR: The key must be [a-zA-Z0-9]{20} --  $key\n" 
-        unless $val;
-    return $val;
+  my $key = shift;
+  my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
+  &_log_error("The key must be [a-zA-Z0-9]{20} -- $key") unless $val;
+  return $val;
 }
 
 sub _validate_path {
-    my $path = shift;
-    my $val = -d $path;
-    print "*** ERROR: The directory name is invalid -- $path\n"
-        unless $val;
-    return $val;
+  my $path = shift;
+  my $val = -d $path;
+  &_log_error("The directory name is invalid -- $path") unless $val;
+  return $val;
 }
 
 &_log_debug("Node key: $node_key");
@@ -250,7 +262,7 @@ sub start {
   my $start = DateTime->now( time_zone => 'local' );
 FILE: while ( defined( my $file = $files->() ) ) {
 
-    print "processing: $file\n";
+    &_log_info("processing: $file");
     if ( -d $file ) {
       opendir( my $dh, $file ) || die "can't opendir $file: $!";
       closedir($dh), _mkdir($file), next
@@ -265,7 +277,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
     $cache{$file} = $change_specs->{attributes};
 
-    print "  [$$] Sending $file...\n";
+    &_log_info("[$$] Sending $file...");
 
     {
       $pm->start and next;
@@ -292,8 +304,8 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
         catch { $error = $_; sleep(3); };
         if ($error) {
-          print "!! Error sending $file trying again... $attempt";
-          print "\t\t$error";
+          &_log_warn("Error sending $file trying again... $attempt");
+          &_log_warn("\t\t$error");
         }
       } while ( $error && ( $attempt++ < 3 ) );
       $pm->finish;
@@ -303,8 +315,8 @@ FILE: while ( defined( my $file = $files->() ) ) {
   $pm->wait_all_children;
 
   my $end = DateTime->now( time_zone => 'local' );
-  print "*\n*\n*\n* Started: $start\n";
-  print "* Completed: $end\n";
+  &_log_info("*\n*\n*\n* Started: $start");
+  &_log_info("* Completed: $end");
 
   _write_cache(%cache);
 
@@ -385,7 +397,7 @@ sub send_file {
     return _send_multipart(@_);
   }
 
-  print "DONE\n";
+  &_log_info("DONE");
 
 }
 
@@ -405,7 +417,7 @@ sub _send_multipart {
   my ( $file, $attrs ) = @_;
 
   my $etag = $attrs->[ETAG];
-  print "!!! $file > 5MB\n";
+  &_log_info("!!! $file > 5MB");
   STDOUT->printflush("\t* init multipart upload...");
 
   my $uri = URI->new(BASE_URL);
@@ -423,7 +435,7 @@ sub _send_multipart {
   my $res       = _send_request($req);
   my $object    = decode_json( $res->content );
   my $upload_id = $object->{upload_id};
-  print "done!\n";
+  &_log_info("done!");
 
   # parts
   my $buffer;
