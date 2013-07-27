@@ -146,7 +146,9 @@ $ua_cache->total_capacity(10);
 
 my $ua =
   LWP::UserAgent::Determined->new(
-  requests_redirectable => [qw(GET HEAD DELETE PUT POST)], );
+  requests_redirectable => [qw(GET HEAD DELETE PUT POST)], 
+  agent => "bdatum-backup/$VERSION (Linux)",
+  );
 $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
   if LWP::UserAgent::Determined->can('ssl_opts');
 $ua->timing('1,2,4,8,16,32');
