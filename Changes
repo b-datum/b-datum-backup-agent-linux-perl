@@ -1,3 +1,10 @@
+Release 0.10 Sun Jul 28 08:24:59 BRT 2013
+	- set user agent
+	- fixed header in help message
+	- fixed cache for multiple instances
+	- _log_* functions
+	- validade keys and path before run.
+	
 Release 0.09 Thu Jul 25 10:31:13 BRT 2013
         - fixed bugs in Makefile.PL
 	- function for write manifest file

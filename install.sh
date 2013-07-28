@@ -69,6 +69,3 @@ perl -MModule::Extract::Use -E 'say $_ for Module::Extract::Use->new->get_module
 
 chmod +x $BIN
 
-# Backward compatibility
-ln -sf $BIN $BASEBIN/backup_agent
-
