@@ -111,10 +111,16 @@ sub _log_warn {
 my $manifest = File::Temp->new( UNLINK => 0, )
   or die q{Couldn't create manifest file};
 
-my $stage_dir_path = join( '/', $ENV{HOME}, '.b-datum', 'stage' );
-my $stage_dir = mkdir( $stage_dir_path, 0777 )
-  or die qq{Could not create staging area in "$stage_dir_path": $!}
-  unless -d $stage_dir_path;
+# create base dir
+my $b_datum_dir = "$ENV{HOME}/.b-datum";
+mkdir($b_datum_dir) unless -d $b_datum_dir;
+die "*** ERROR: Can't create directory $b_datum_dir" unless -d $b_datum_dir;
+
+# creating staging dir
+my $stage_dir = join( '/', $ENV{HOME}, '.b-datum', 'stage' );
+mkdir( $stage_dir, 0777 )
+  or die qq{Could not create staging area in "$stage_dir": $!}
+  unless -d $stage_dir;
 
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
@@ -319,9 +325,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
             }
           }
           else {
-            send_file( $file, $change_specs
-              ? $change_specs->{attributes}
-              : \@previous_attrs );
+            send_file( $file, $change_specs->{attributes}, $change_specs );
           }
         }
 
@@ -332,11 +336,11 @@ FILE: while ( defined( my $file = $files->() ) ) {
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
-      $pm->finish;
-
-      unlink $change_specs->{stage_file}
+      unlink( $change_specs->{stage_file} )
         || die qq{Could not unlink tempfile "$change_specs->{stage_file}": $!}
         if exists $change_specs->{stage_file} && -e $change_specs->{stage_file};
+
+      $pm->finish;
 
     }
   }
@@ -364,8 +368,9 @@ sub get_changes {
   return unless defined $attrs && ( ref $attrs eq 'ARRAY' );
   my $stat = ( -l $file ? File::stat::lstat($file) : File::stat::stat($file) )
     or return;
-  my $sfile           = _link_to_stage($file);
-  my $etag            = -l $file ? md5_hex('') : file_md5_hex($sfile);
+
+  my $sfile = -l $file ? $file       : _link_to_stage($file); # no need to move the symlink itself
+  my $etag  = -l $file ? md5_hex('') : file_md5_hex($sfile);
   my @modified_fields = ();
 
   my $new_attrs = [
@@ -453,7 +458,7 @@ sub _send_manifest {
 }
 
 sub _send_multipart {
-  my ( $file, $attrs ) = @_;
+  my ( $file, $attrs, $changes ) = @_;
 
   my $etag = $attrs->[ETAG];
   &_log_info("!!! $file > 5MB");
@@ -468,7 +473,7 @@ sub _send_multipart {
   # init
 
   my $full_etag = $etag;
-  my $sfile     = $attrs->{stage_file};
+  my $sfile     = $changes->{stage_file};
 
   $uri->query_form( path => "$file", multipart => 1 );
   my $req       = POST $uri, Etag => $full_etag;
@@ -589,7 +594,7 @@ sub _delete {
 }
 
 sub _send_default {
-  my ( $file, $attrs ) = @_;
+  my ( $file, $attrs, $changes ) = @_;
   my $uri = URI->new(BASE_URL);
   $uri->path('/storage');
 
@@ -598,7 +603,7 @@ sub _send_default {
   return 1
     if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
 
-  my $sfile = $attrs->{stage_file};
+  my $sfile = $changes->{stage_file};
 
   my $req = POST $uri,
     Content_Type => 'form-data',
@@ -662,9 +667,6 @@ sub _delete_files {
 }
 
 sub _make_cache_filename {
-  my $b_datum_dir = "$ENV{HOME}/.b-datum";
-  mkdir($b_datum_dir) unless -d $b_datum_dir;
-  die "*** ERROR: Can't create directory $b_datum_dir" unless -d $b_datum_dir;
   my $base = md5_hex( $node_key . $partner_key . $path );
   return "$b_datum_dir/$base.cache";
 }
