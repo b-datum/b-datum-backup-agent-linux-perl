@@ -369,8 +369,11 @@ sub get_changes {
   my $stat = ( -l $file ? File::stat::lstat($file) : File::stat::stat($file) )
     or return;
 
-  my $sfile = -l $file ? $file       : _link_to_stage($file); # no need to move the symlink itself
-  my $etag  = -l $file ? md5_hex('') : file_md5_hex($sfile);
+  my $sfile =
+    -l $file
+    ? $file
+    : _link_to_stage($file);    # no need to move the symlink itself
+  my $etag = -l $file ? md5_hex('') : file_md5_hex($sfile);
   my @modified_fields = ();
 
   my $new_attrs = [
@@ -699,7 +702,7 @@ sub _read_cache {
     my $attrs = [ split /,/, $line ];
     my $file  = shift @$attrs;
     my $stat  = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
-    if ( !-e $stat ) {
+    if ( !$stat ) {
       if ( !$opt->nodelete ) {
         push( @to_delete, $file );
       }
