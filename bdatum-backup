@@ -618,8 +618,8 @@ sub _send_default {
     ];
   _send_request($req);
 
-  my $stat = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
-  _write_to_manifest( $manifest, "+$file\n+${\(-s $stat)}\n+$etag\n\n" );
+  my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
+  _write_to_manifest( $manifest, "+$file\n+${\$stat->size}\n+$etag\n\n" );
 
   return 1;
 
@@ -638,8 +638,8 @@ sub _check_duplicate {
     ];
   my $res = $ua->request($req);
   if ( $res->code == 201 ) {
-    my $stat = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
-    _write_to_manifest( $manifest, "+$file\n+${\(-s $stat)}\n+$etag\n\n" );
+    my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
+    _write_to_manifest( $manifest, "+$file\n+${\$stat->size}\n+$etag\n\n" );
   }
   return $res->is_success;
 }
@@ -701,7 +701,7 @@ sub _read_cache {
   while ( my $line = $fh->getline ) {
     my $attrs = [ split /,/, $line ];
     my $file  = shift @$attrs;
-    my $stat  = -l $file ? File::stat::lstat($file) : File::stat::lstat($file);
+    my $stat  = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
     if ( !$stat ) {
       if ( !$opt->nodelete ) {
         push( @to_delete, $file );
