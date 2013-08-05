@@ -1,3 +1,9 @@
+Relase 0.11 Mon Aug  5 19:08:44 BRT 2013
+	- fixing incorrect use of lstat.
+	- safely copying file before upload
+	- using regexp rules instead of bash-like wildcards for blacklist
+	- adding support for blacklist fixing error in cache write
+
 Release 0.10 Sun Jul 28 08:24:59 BRT 2013
 	- set user agent
 	- fixed header in help message
