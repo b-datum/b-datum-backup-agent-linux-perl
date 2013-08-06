@@ -336,9 +336,12 @@ FILE: while ( defined( my $file = $files->() ) ) {
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
-      unlink( $change_specs->{stage_file} )
-        || die qq{Could not unlink tempfile "$change_specs->{stage_file}": $!}
-        if exists $change_specs->{stage_file} && -e $change_specs->{stage_file};
+      ( unlink( $change_specs->{stage_file} )
+          || die
+          qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
+        if exists $change_specs->{stage_file}
+        && -e $change_specs->{stage_file}
+        && !-l $change_specs->{stage_file};
 
       $pm->finish;
 
