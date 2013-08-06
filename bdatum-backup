@@ -44,6 +44,8 @@ use List::MoreUtils qw(pairwise);
 use File::stat;
 use File::Basename;
 use File::Copy;
+use Filesys::DiskSpace;
+
 use Config::Any::INI;
 
 use version; our $VERSION = qv('0.11'); # same line, keep backcompat with older MakeMaker
@@ -785,5 +787,14 @@ sub _link_to_stage {
   my $stage_file = _stage_file($file);
   copy( $file, $stage_file ) or die "Copy failed: $!";
   return $stage_file;
+}
+
+sub _df_avail {
+    my $dir = shift;
+    return -1 unless -d $dir;
+    my @df;
+    eval { @df = df $dir };
+    return -2 if $@; 
+    return $df[3];
 }
 

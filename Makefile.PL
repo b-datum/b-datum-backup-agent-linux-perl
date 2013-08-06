@@ -36,6 +36,7 @@ WriteMakefile(
     'File::Slurp'                => 0,
     'File::Temp'                 => 0,
     'File::Copy'                 => 0,
+    'Filesys::DiskSpace'         => 0,
     'Config::Any::INI'           => 0,
   }
 );
