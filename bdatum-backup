@@ -27,7 +27,7 @@ use File::Slurp qw(read_file);
 use JSON qw(encode_json decode_json);
 use IO::Handle;
 use IO::File;
-use File::Temp qw/ :seekable /;
+use File::Temp qw/ :seekable tempdir /;
 
 use Cwd qw(abs_path);
 use Getopt::Long::Descriptive;
@@ -117,7 +117,7 @@ mkdir($b_datum_dir) unless -d $b_datum_dir;
 die "*** ERROR: Can't create directory $b_datum_dir" unless -d $b_datum_dir;
 
 # creating staging dir
-my $stage_dir = join( '/', $ENV{HOME}, '.b-datum', 'stage' );
+my $stage_dir = tempdir( DIR => join( '/', $b_datum_dir, 'stage' ) );
 mkdir( $stage_dir, 0777 )
   or die qq{Could not create staging area in "$stage_dir": $!}
   unless -d $stage_dir;
