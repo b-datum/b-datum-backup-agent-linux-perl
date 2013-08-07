@@ -150,7 +150,7 @@ if ( -r $configfile ) {
 push(@blacklist, qr/^$stage_dir/);
 
 # for linux
-push(@blacklist, qr/^\/proc/);
+push(@blacklist, qr/^\/proc\//, qr/^\/sys\//);
 
 $node_key    = $opt->node_key    if $opt->node_key;
 $partner_key = $opt->partner_key if $opt->partner_key;
