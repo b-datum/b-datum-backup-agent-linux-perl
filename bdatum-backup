@@ -125,9 +125,6 @@ mkdir( $stage_dir, 0777 )
   or die qq{Could not create staging area in "$stage_dir": $!}
   unless -d $stage_dir;
 
-# skipping staging dir by blacklist
-push(@blacklist, qr/^$stage_dir/);
-
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
 if ( -r $configfile ) {
@@ -152,6 +149,12 @@ if ( -r $configfile ) {
       or die qq{Blacklist item "$_" is not a valid regex};
   } keys %{ $config->{blacklist} || {} };
 }
+
+# skipping staging dir by blacklist
+push(@blacklist, qr/^$stage_dir/);
+
+# for linux
+push(@blacklist, qr/^\/proc/);
 
 $node_key    = $opt->node_key    if $opt->node_key;
 $partner_key = $opt->partner_key if $opt->partner_key;
