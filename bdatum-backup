@@ -117,13 +117,9 @@ mkdir($b_datum_dir) unless -d $b_datum_dir;
 die "*** ERROR: Can't create directory $b_datum_dir" unless -d $b_datum_dir;
 
 # creating staging dir
-my $base_stage_dir = join( '/', $b_datum_dir, 'stage' );
-mkdir($base_stage_dir) unless -d $base_stage_dir;
-die "*** ERROR: Can't create directory $base_stage_dir" unless -d $base_stage_dir;
-my $stage_dir = tempdir( DIR => $base_stage_dir, UNLINK => 1 );
-mkdir( $stage_dir, 0777 )
-  or die qq{Could not create staging area in "$stage_dir": $!}
-  unless -d $stage_dir;
+my $stage_dir = join( '/', $b_datum_dir, 'stage' );
+mkdir($stage_dir) unless -d $stage_dir;
+die "*** ERROR: Can't create directory $stage_dir" unless -d $stage_dir;
 
 my $configfile = $opt->config || '/etc/bdatum/backup.conf';
 
