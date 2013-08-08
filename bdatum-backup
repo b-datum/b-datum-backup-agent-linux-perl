@@ -20,8 +20,6 @@ use Digest::MD5 qw(md5_hex);
 use File::Next;
 use Encode;
 
-use List::Util qw(first);
-
 use Fcntl qw(:flock SEEK_END);
 use File::Slurp qw(read_file);
 use JSON qw(encode_json decode_json);
@@ -365,7 +363,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
 sub _in_blacklist {
   my $file = shift;
-  my $yes = first { $file =~ $_ } @blacklist;
+  my $yes = grep { $file =~ $_ } @blacklist;
   _warn("SKIPPING: $file is in blacklist") if $yes;
   return $yes;
 }
