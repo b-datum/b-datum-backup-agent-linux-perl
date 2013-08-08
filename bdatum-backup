@@ -147,7 +147,7 @@ if ( -r $configfile ) {
 }
 
 # skipping staging dir by blacklist
-push(@blacklist, qr/^$stage_dir/);
+push(@blacklist, qr/^$b_datum_dir/, qr/^$stage_dir/);
 
 # for linux
 push(@blacklist, qr/^\/proc\//, qr/^\/sys\//);
