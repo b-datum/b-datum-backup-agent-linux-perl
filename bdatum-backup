@@ -6,42 +6,39 @@ use utf8;
 use strict;
 use warnings qw(FATAL utf8);
 use open qw(:std :utf8);
-
 use Carp;
-use LWP::UserAgent::Determined;
-use LWP::ConnCache;
-use IO::Socket::SSL;
 
-use URI;
-use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
-use HTTP::Request;
-use Digest::MD5::File qw(file_md5_hex);
-use Digest::MD5 qw(md5_hex);
 use File::Next;
-use Encode;
-
-use Fcntl qw(:flock SEEK_END);
-use File::Slurp qw(read_file);
-use JSON qw(encode_json decode_json);
-use IO::Handle;
-use IO::File;
-use File::Temp qw/ :seekable tempdir /;
-
-use Cwd qw(abs_path);
-use Getopt::Long::Descriptive;
-use File::MimeInfo::Magic;
-use Parallel::ForkManager;
-use Try::Tiny;
-
-use DateTime;
-use Time::HiRes qw(time);
-
-use Perl6::Junction qw(all);
-use List::MoreUtils qw(pairwise);
-
 use File::stat;
 use File::Basename;
 use File::Copy;
+use File::Slurp qw(read_file);
+use File::Temp qw/ :seekable tempdir /;
+use File::MimeInfo::Magic;
+use Fcntl qw(:flock SEEK_END);
+use IO::Handle;
+use IO::File;
+use Digest::MD5::File qw(file_md5_hex);
+use Digest::MD5 qw(md5_hex);
+use Cwd qw(abs_path);
+
+use Encode;
+
+use LWP::UserAgent::Determined;
+use LWP::ConnCache;
+use IO::Socket::SSL;
+use URI;
+use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
+use HTTP::Request;
+use JSON qw(encode_json decode_json);
+
+use Getopt::Long::Descriptive;
+use Parallel::ForkManager;
+use Try::Tiny;
+use DateTime;
+use Time::HiRes qw(time);
+use Perl6::Junction qw(all);
+use List::MoreUtils qw(pairwise);
 use Config::Any::INI;
 
 use version; our $VERSION = qv('0.13'); # same line, keep backcompat with older MakeMaker
