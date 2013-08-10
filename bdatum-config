@@ -30,8 +30,9 @@ function _get_pathdir() {
 	PATHDIR=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter backup directory:" 10 30)
 }
 
-function _save_tmpfile() {
-	FILECONTENT="
+function _write_default_config() {
+	TARGET_FILE=$1
+        FILECONTENT="
 node_key=$NODEKEY
 partner_key=$PARTNERKEY
 path=$PATHDIR
@@ -43,7 +44,11 @@ path=$PATHDIR
 # partner_key=another_key
 # path=another_path
 "
-	echo "$FILECONTENT" > $TMPFILE
+	echo "$FILECONTENT" > $TARGET_FILE
+}
+
+function _save_tmpfile() {
+	_write_default_config "$TMPFILE"
 	dialog --backtitle "$APP" --title "$ETC" --textbox $TMPFILE 22 70
 	if [ -f $ETC ] ; then
 		echo "Move $ETC to $ETCBKP..."
@@ -59,6 +64,9 @@ function _ask_to_continue() {
 	dialog --backtitle "$APP" --yesno "$msg\nDo you like to continue this setup?" 6 50
 	response=$?
 	if [ $response == 1 ] ; then
+		if [ ! -f $ETC ] ; then
+			_write_default_config "$ETC"
+		fi
 		exit
 	fi
 }
