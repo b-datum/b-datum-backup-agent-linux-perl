@@ -1,7 +1,6 @@
-- multiple targets to do backup
 - log4perl
 - all options in config file
 - documentation about config file
-
-
+- se não passar as chaves, colocar o arquivo de configuração padrão.
+- _die para tratar erros, e enviar para  
 

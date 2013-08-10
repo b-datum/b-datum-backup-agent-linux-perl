@@ -72,7 +72,11 @@ my ( $opt, $usage ) = describe_options(
   [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
   [ "config|c=s" => 'config file', ],
   [ "profile=s"  => 'load profile', ],
-
+  [],
+  [ "proxy_scheme=s" => "Proxy schema (Default: http)" ], 
+  [ "proxy_server=s" => "Proxy server" ],
+  [ "proxy_username=s" => "Proxy username" ],
+  [ "proxy_password=s" => "Proxy password" ],
   [],
   [ "verbose|v" => 'verbose mode', ],
   [ "debug|d"   => 'debug mode' ],
@@ -191,6 +195,24 @@ my $ua = LWP::UserAgent::Determined->new(
   requests_redirectable => [qw(GET HEAD DELETE PUT POST)],
   agent                 => "bdatum-backup/$VERSION (Linux)",
 );
+
+if ($opt->proxy_server) {
+    my $scheme = $opt->proxy_scheme || 'http';
+    my $server = $opt->proxy_server;
+    my $username = $opt->proxy_username;
+    my $password = $opt->proxy_password;
+
+    # For HTTP
+    my $proxy = "$scheme://$username:$password\@$server";
+    $ua->proxy([$scheme], $proxy);
+
+    # For HTTPS
+    $proxy = "$scheme://$server";
+    $ENV{HTTPS_PROXY} = $proxy;
+    $ENV{HTTPS_PROXY_USERNAME} = $username;
+    $ENV{HTTPS_PROXY_PASSWORD} = $password;
+}
+
 $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
   if LWP::UserAgent::Determined->can('ssl_opts');
 $ua->timing('1,2,4,8,16,32');
