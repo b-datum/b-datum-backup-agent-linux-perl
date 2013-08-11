@@ -87,8 +87,7 @@ print( $usage->text ), exit(0) if $opt->help;
 
 sub _log {
     my $level = shift;
-    my $msg = @_;
-    print "[$level] $msg\n";
+    print "[$level] @_\n";
     return 1;
 }
 
