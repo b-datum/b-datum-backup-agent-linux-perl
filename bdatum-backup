@@ -27,6 +27,7 @@ use Encode;
 use LWP::UserAgent::Determined;
 use LWP::ConnCache;
 use IO::Socket::SSL;
+use Net::SSL ();
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
@@ -87,7 +88,8 @@ print( $usage->text ), exit(0) if $opt->help;
 
 sub _log {
     my $level = shift;
-    print "[$level] @_\n";
+    my $msg = @_;
+    print "[$level] $msg\n";
     return 1;
 }
 
@@ -206,13 +208,7 @@ if ($opt->proxy_server) {
     my $password = $opt->proxy_password;
 
     # For HTTP
-    my $proxy;
-    
-    if ($username and $password) {
-        $proxy = "$scheme://$username:$password\@$server";
-    } else {
-        $proxy = "$scheme://$server";
-    }
+    my $proxy = "$scheme://$username:$password\@$server";
     $ua->proxy([$scheme], $proxy);
 
     # For HTTPS
@@ -220,6 +216,13 @@ if ($opt->proxy_server) {
     $ENV{HTTPS_PROXY} = $proxy;
     $ENV{HTTPS_PROXY_USERNAME} = $username;
     $ENV{HTTPS_PROXY_PASSWORD} = $password;
+    $ENV{HTTP_PROXY} = $proxy;
+    $ENV{HTTP_PROXY_USERNAME} = $username;
+    $ENV{HTTP_PROXY_PASSWORD} = $password;
+    $Net::HTTPS::SSL_SOCKET_CLASS = "Net::SSL";
+    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+    $ua->env_proxy(1);
+
 }
 
 $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
