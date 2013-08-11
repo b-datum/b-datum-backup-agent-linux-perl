@@ -76,7 +76,7 @@ our ( $opt,         $usage );
 &run;
 
 sub run {
-    while {
+    while(1) {
         eval { &main; };
 
         if ($@) {
