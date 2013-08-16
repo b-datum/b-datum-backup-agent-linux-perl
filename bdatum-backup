@@ -86,6 +86,8 @@ sub run {
         last unless $opt->persistent;
         sleep(10);
     }
+
+    &_remove_lock_running;
 }
 
 sub _check_already_running {
@@ -96,6 +98,11 @@ sub _check_already_running {
     }
     open( FHL, ">", $lock_file ) or die "Cannot open $lock_file - $!";
     flock( FHL, LOCK_EX | LOCK_NB );
+}
+
+sub _remove_lock_running {
+    my $lock_file = &_make_control_file('lock');
+    unlink($lock_file);
 }
 
 sub setup_manifest {
