@@ -37,6 +37,7 @@ WriteMakefile(
     'File::Temp'                 => 0,
     'File::Copy'                 => 0,
     'Config::Any::INI'           => 0,
+    'Net::SSL'                   => 0,
   }
 );
 
