@@ -316,7 +316,8 @@ sub _validate_path {
 
 sub _log {
     my $level = shift;
-    print "[$level] @_\n";
+    my $msg = join(' ', @_);
+    print "[$level] $msg\n";
     return 1;
 }
 
