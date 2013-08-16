@@ -252,7 +252,7 @@ sub main {
 
   $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
     if LWP::UserAgent::Determined->can('ssl_opts');
-  $ua->timing('1,2,4,8,16,32');
+  $ua->timing('30');
   $ua->conn_cache($ua_cache);
   $ua->add_handler( request_prepare =>
       sub { shift->authorization_basic( $node_key, $partner_key ); } );
