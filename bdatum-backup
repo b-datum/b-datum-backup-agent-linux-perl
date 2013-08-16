@@ -740,9 +740,10 @@ sub _delete_files {
     $pm->wait_all_children;
 }
 
-sub _make_cache_filename {
+sub _make_control_file {
+    my $suffix = shift;
     my $base = md5_hex( $node_key . $partner_key . $path );
-    return "$b_datum_dir/$base.cache";
+    return "$b_datum_dir/$base.$suffix";
 }
 
 sub _read_cache {
@@ -750,7 +751,7 @@ sub _read_cache {
     # Slurp cache File
     #
 
-    my $cache_file = &_make_cache_filename();
+    my $cache_file = &_make_control_file('cache');
     my %cache;
     my $cache_file_version = &_filename_cache_version($cache_file);
 
@@ -817,7 +818,7 @@ sub _read_cache_version {
 sub _write_cache {
     my (%cache)            = @_;
     my $t                  = time;
-    my $cache_file         = &_make_cache_filename();
+    my $cache_file         = &_make_control_file('cache');
     my $cache_file_version = &_filename_cache_version($cache_file);
     &_update_cache_version($cache_file_version);
 
