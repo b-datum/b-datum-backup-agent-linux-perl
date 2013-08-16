@@ -42,8 +42,6 @@ use Config::Any::INI;
 
 use version; our $VERSION = qv('0.13'); # same line, keep backcompat with older MakeMaker
 
-$0 = "[$0]";
-
 use constant {
     LIMIT    => 5 * 1024 * 1024,
     BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
@@ -68,23 +66,36 @@ my %metadata_map = (
     SYMLINK, => 'meta-symlink',
 );
 
-our ( $node_key,    $partner_key, $path,       @blacklist, $manifest );
-our ( $b_datum_dir, $stage_dir,   $configfile, $ua,        $pm );
-our ( $opt,         $usage );
+our $b_datum_dir = "$ENV{HOME}/.b-datum";
+
+our ( $node_key, $partner_key, $path, @blacklist, $manifest );
+our ( $stage_dir, $configfile, $ua, $pm );
+our ( $opt, $usage, $run_lock_fh );
 
 &setup_manifest;
 &run;
 
 sub run {
-    while(1) {
+    while (1) {
         eval { &main; };
 
         if ($@) {
             &_log_error($@);
         }
-        sleep(10);
+
         last unless $opt->persistent;
+        sleep(10);
     }
+}
+
+sub _check_already_running {
+    my $lock_file = &_make_control_file('lock');
+    if ( -f $lock_file ) {
+        open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
+        flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
+    }
+    open( FHL, ">", $lock_file ) or die "Cannot open $lock_file - $!";
+    flock( FHL, LOCK_EX | LOCK_NB );
 }
 
 sub setup_manifest {
@@ -124,8 +135,9 @@ sub main {
 
     print( $usage->text ), exit(0) if $opt->help;
 
+    $0 = "[bdatum-backup]";
+
     # create base dir
-    $b_datum_dir = "$ENV{HOME}/.b-datum";
     $stage_dir = join( '/', $b_datum_dir, 'stage' );
     &_create_local_dir($b_datum_dir);
     &_create_local_dir($stage_dir);
@@ -176,6 +188,8 @@ sub main {
     &_log_debug("Node key: $node_key");
     &_log_debug("Partner key: $partner_key");
     &_log_debug("Path: $path");
+
+    &_check_already_running;
 
     my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
     my $context   = IO::Socket::SSL::SSL_Context->new(
@@ -316,7 +330,7 @@ sub _validate_path {
 
 sub _log {
     my $level = shift;
-    my $msg = join(' ', @_);
+    my $msg = join( ' ', @_ );
     print "[$level] $msg\n";
     return 1;
 }
@@ -742,7 +756,7 @@ sub _delete_files {
 
 sub _make_control_file {
     my $suffix = shift;
-    my $base = md5_hex( $node_key . $partner_key . $path );
+    my $base   = md5_hex( $node_key . $partner_key . $path );
     return "$b_datum_dir/$base.$suffix";
 }
 
