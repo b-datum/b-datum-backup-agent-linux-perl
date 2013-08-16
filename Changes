@@ -1,3 +1,7 @@
+Release 0.15 Fri Aug 16 17:49:56 BRT 2013
+	- exiting when 401
+	- remove lock file when finish
+
 Release 0.14 Thu Aug 15 23:49:29 BRT 2013
 	- check if bdatum backup is already running for specific directory
 	- _make_control_file instead of _make_cache_filename
