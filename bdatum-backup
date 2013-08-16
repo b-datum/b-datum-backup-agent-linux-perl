@@ -40,7 +40,7 @@ use Perl6::Junction qw(all);
 use List::MoreUtils qw(pairwise);
 use Config::Any::INI;
 
-use version; our $VERSION = qv('0.13'); # same line, keep backcompat with older MakeMaker
+use version; our $VERSION = qv('0.14'); # same line, keep backcompat with older MakeMaker
 
 use constant {
     LIMIT    => 5 * 1024 * 1024,

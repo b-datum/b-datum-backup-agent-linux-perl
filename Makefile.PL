@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
   NAME       => 'bdatum-backup',
-  VERSION    => '0.13',
+  VERSION    => '0.14',
   ABSTRACT   => 'b-datum backup',
   LICENSE    => 'GPLv3',
   EXE_FILES  => [ 'bdatum-backup', 'bdatum-config' ],
