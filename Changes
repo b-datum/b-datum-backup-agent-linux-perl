@@ -1,3 +1,12 @@
+Release 0.16 Sat Aug 17 18:43:20 BRT 2013
+	- support for syslog
+	- daemon mode
+	- Skipping file if size is >5TB or >PART_SIZE*10000
+	- new option for set part size to multipart upload
+	- add license in the header of bdatum-backup
+	- persistent_time option
+	- just one time try to send the file, after 30 seconds (or --retry_time=N)
+
 Release 0.15 Fri Aug 16 17:49:56 BRT 2013
 	- exiting when 401
 	- remove lock file when finish
