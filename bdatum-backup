@@ -419,17 +419,49 @@ sub _log_warn {
   return &_log( 'warn', @_ );
 }
 
+sub _get_lastbackup {
+  my $lastbackup_file = &_make_control_file('lastbackup');
+  return unless -e $lastbackup_file;
+  my $content = do { local ( @ARGV, $/ ) = $lastbackup_file; <> };
+  return $content;
+}
+
+sub _write_lastbackup {
+    my $file = shift;
+    my $lastbackup_file = &_make_control_file('lastbackup');
+    open my $fh, '>', $lastbackup_file;
+    print $fh $file;
+    close $fh;
+}
+
 sub start {
   my %cache = _read_cache();
 
   my $start = DateTime->now( time_zone => 'local' );
   my $files = &_get_files();
+  my $lastbackup_file = &_get_lastbackup;
+  my $lastbackup_run = $lastbackup_file ? 1 : 0;
 
 FILE: while ( defined( my $file = $files->() ) ) {
 
+    # abort backup if we receive unauthorized response from bdatum.
     _unauthorized_abort() if $_abort;
+   
+    # fast way to do backup in the "second-first job", 
+    # if the first-first backup not finish completely.
+    my $cache_file = &_make_control_file('cache');
+    if ( ! -e $cache_file && $lastbackup_run ) {
+        if ( $lastbackup_file eq $file) { 
+            $lastbackup_run = 0;
+        }
+        next;
+    } elsif ( ! -e $cache_file ) {
+        &_write_lastbackup($file);
+    }
 
+    # here, we go.
     &_log_info("processing: $file");
+
     if ( -d $file ) {
       opendir( my $dh, $file ) || die "can't opendir $file: $!";
       closedir($dh), _mkdir($file), next
