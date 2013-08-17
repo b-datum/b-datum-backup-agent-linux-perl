@@ -97,7 +97,7 @@ sub run {
     }
 
     last unless $opt->persistent;
-    sleep(10);
+    sleep($opt->persistent_time);
   }
 
   &_remove_lock_running;
@@ -142,6 +142,7 @@ sub main {
     [ "config|c=s" => 'config file' ],
     [ "profile=s"  => 'load profile' ],
     [ "persistent" => 'persistent mode' ],
+    [ "persistent_time" => 'time in seconds for run again the scan in directory to do backup (default: 180)', { default => 180 } ],
     [],
     [ "proxy_scheme=s"   => "Proxy schema (Default: http)" ],
     [ "proxy_server=s"   => "Proxy server" ],
