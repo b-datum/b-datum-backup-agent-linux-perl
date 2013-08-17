@@ -159,6 +159,7 @@ sub main {
     [ "profile=s"  => 'load profile' ],
     [ "persistent" => 'persistent mode' ],
     [ "persistent_time" => 'time in seconds for run again the scan in directory to do backup (default: 180)', { default => 180 } ],
+    [ "retry_time" => 'time to retry the request to bdatum if some request fails (default: 30)', { default => 30 } ],
     [],
     [ "proxy_scheme=s"   => "Proxy schema (Default: http)" ],
     [ "proxy_server=s"   => "Proxy server" ],
@@ -270,7 +271,7 @@ sub main {
 
   $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
     if LWP::UserAgent::Determined->can('ssl_opts');
-  $ua->timing('30');
+  $ua->timing($opt->retry_time);
   $ua->conn_cache($ua_cache);
   $ua->add_handler( request_prepare =>
       sub { shift->authorization_basic( $node_key, $partner_key ); } );
