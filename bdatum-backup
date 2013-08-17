@@ -5,6 +5,7 @@ use strict;
 use warnings qw(FATAL utf8);
 use open qw(:std :utf8);
 use Carp;
+use Sys::Syslog qw(:standard :macros);
 
 use File::Next;
 use File::stat;
@@ -80,7 +81,7 @@ $SIG{USR1} = sub {
 };
 
 sub _unauthorized_abort {
-  print "*** ERROR: 401 http unauthorized\n";
+  &_log_error("*** ERROR: 401 http unauthorized");
   exit 77;    # EX_NOPERM
 }
 
@@ -348,6 +349,16 @@ sub _validate_path {
 sub _log {
   my $level = shift;
   my $msg = join( ' ', @_ );
+  
+  my $syslog_level = LOG_INFO;
+  $syslog_level = LOG_DEBUG if $level eq 'debug';
+  $syslog_level = LOG_WARNING if $level eq 'warn';
+  $syslog_level = LOG_ERR if $level eq 'error';
+
+  openlog($0, 'pid', LOG_USER);
+  syslog($syslog_level, "[$level] $msg");
+  closelog();
+
   print "[$level] $msg\n";
   return 1;
 }
