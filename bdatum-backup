@@ -396,7 +396,7 @@ sub _log {
   syslog($syslog_level, "[$level] $msg");
   closelog();
 
-  print "[$level] $msg\n";
+  print "[$level] $msg\n" unless $opt->daemon;
   return 1;
 }
 
