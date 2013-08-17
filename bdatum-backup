@@ -155,6 +155,7 @@ sub main {
     [],
     [ "nodelete|k" => q{don't remove in remote storage files deleted} ],
     [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
+    [ "daemon|d"   => "Daemon mode" ],
     [ "config|c=s" => 'config file' ],
     [ "profile=s"  => 'load profile' ],
     [ "persistent" => 'persistent mode' ],
@@ -177,6 +178,14 @@ sub main {
 
   $0 = "[bdatum-backup]";
 
+  # Daemon
+  if ($opt->daemon) {
+    my $main_pid = fork();
+    die "cannot fork" unless defined $main_pid;
+    exit 0 if $main_pid != 0;
+  }
+
+  # Check part_size
   if ($opt->part_size < 5 or $opt->part_size > 500) {
     &_log_error("part_size option need to be > 5 or < 500.");
     exit(0);
@@ -605,8 +614,7 @@ sub _send_multipart {
   my ( $file, $attrs, $changes ) = @_;
 
   my $etag = $attrs->[ETAG];
-  &_log_info("!!! $file > 5MB");
-  STDOUT->printflush("\t* init multipart upload...");
+  &_log_info("init multipart upload to $file");
 
   my $uri = URI->new(BASE_URL);
   $uri->path('storage');
@@ -615,7 +623,6 @@ sub _send_multipart {
     if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
 
   # init
-
   my $full_etag = $etag;
   my $sfile     = $changes->{stage_file};
 
@@ -624,7 +631,6 @@ sub _send_multipart {
   my $res       = _send_request($req);
   my $object    = decode_json( $res->content );
   my $upload_id = $object->{upload_id};
-  &_log_info("done!");
 
   # parts
   my $buffer;
@@ -636,7 +642,7 @@ sub _send_multipart {
   my @parts;
 
   while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
-    STDOUT->printflush("\t* sending part $i...");
+    &log_info("sending part $if of $file");
 
     my $uri = URI->new(BASE_URL);
     $uri->path('storage');
@@ -657,12 +663,11 @@ sub _send_multipart {
 
     my $res = _send_request($req);
 
-    print "done!\n";
+    &log_info("finish upload part $i of $file.";
   }
   $fh->close;
 
   #finalize
-  STDOUT->printflush("\t* finalizing...");
   $uri = URI->new(BASE_URL);
   $uri->path('/storage');
   $uri->query_form( path => "$file", upload_id => $upload_id );
@@ -679,7 +684,7 @@ sub _send_multipart {
     }
     );
   _send_request($req);
-  print "done!\n";
+  &_log_info("finish upload multipart to $file");
 
   _write_to_manifest( $manifest, "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
 
@@ -706,7 +711,7 @@ sub _mkdir {
   my $uri = URI->new(BASE_URL);
 
   $file = "$file/";
-  print "\t $file is an empty dir\n";
+  &_log_info("$file is an empty dir");
 
   $uri->path('/storage');
 
@@ -729,7 +734,7 @@ sub _delete {
   $uri->path('storage');
   $uri->query_form( path => $file );
   my $req = DELETE $uri;
-  STDOUT->printflush("* deleting $file ... \n");
+  &_log_info("deleting $file");
   my $res = $ua->request($req);
 
   _write_to_manifest( $manifest, "-$file\n\n" );
@@ -827,8 +832,8 @@ sub _read_cache {
 
   my $cache_version = &_read_cache_version($cache_file_version);
   if ( version->parse($cache_version) != version->parse($VERSION) ) {
-    print "* Remove $cache_file_version\n";
-    print "* Remove $cache_file\n";
+    &_log_info("Remove cache version file: $cache_file_version");
+    &_log_info("Remove cache file: $cache_file");
     unlink($cache_file_version);
     unlink($cache_file);
   }
@@ -853,7 +858,7 @@ sub _read_cache {
 
     $cache{$file} = $attrs;
   }
-  print '* Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s\n";
+  &_log_info('Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s");
 
   close($fh);
   undef($fh);
@@ -901,10 +906,8 @@ sub _write_cache {
     }
     keys %cache;
 
-  #  $cache_file->close;
-  print '* Cache write took: '
-    . sprintf( "%.9f", ( time - $t ) )
-    . "s\n ==> Done!\n";
+  # $cache_file->close;
+  &_log_info('* Cache write took: '. sprintf( "%.9f", ( time - $t ) ) . "s");
 }
 
 sub lock {
