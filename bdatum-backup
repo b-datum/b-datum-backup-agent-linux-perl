@@ -430,6 +430,13 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
     $cache{$file} = $change_specs->{attributes};
 
+    # The limit to send a file to bdatum is $PART_LIMIT_SIZE*1000 or 5TB.
+    my $file_size = -s $file;
+    if ( ($PART_LIMIT_SIZE * LIMIT_PARTS) > $file_size or $file_size > (5*1024*1024*1024*1025)) {
+        &_log_error("Skipping $file, because the size ($file_size) is >5TB or >PART_SIZE*10000");
+        next;
+    }
+
     &_log_info("[$$] Sending $file...");
 
     {
