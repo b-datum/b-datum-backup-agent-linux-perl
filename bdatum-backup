@@ -317,7 +317,7 @@ sub main {
 sub _get_files {
   return File::Next::everything(
     {
-      error_handler => sub { warn @_; },
+      error_handler => sub { &_log_error( @_ ); },
 
       # show symlinks
       follow_symlinks => 1,
