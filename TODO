@@ -3,5 +3,4 @@
 - opção de zerar o cache remotamente.
 - last-backup
 - parametros de erros no config
-- prever tamanho máximo de arquivo.
 - uso opcional da area de stage.
