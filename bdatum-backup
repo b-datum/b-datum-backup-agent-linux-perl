@@ -451,7 +451,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
         next;
     }
 
-    &_log_info("[$$] Sending $file...");
+    &_log_info("Sending $file...");
 
     {
       $pm->start and next;
