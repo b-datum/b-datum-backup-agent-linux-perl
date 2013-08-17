@@ -158,15 +158,15 @@ sub main {
     [ "config|c=s" => 'config file' ],
     [ "profile=s"  => 'load profile' ],
     [ "persistent" => 'persistent mode' ],
-    [ "persistent_time" => 'time in seconds for run again the scan in directory to do backup (default: 180)', { default => 180 } ],
-    [ "retry_time" => 'time to retry the request to bdatum if some request fails (default: 30)', { default => 30 } ],
+    [ "persistent_time=i" => 'time in seconds for run again the scan in directory to do backup (default: 180)', { default => 180 } ],
+    [ "retry_time=i" => 'time to retry the request to bdatum if some request fails (default: 30)', { default => 30 } ],
     [],
     [ "proxy_scheme=s"   => "Proxy schema (Default: http)" ],
     [ "proxy_server=s"   => "Proxy server" ],
     [ "proxy_username=s" => "Proxy username" ],
     [ "proxy_password=s" => "Proxy password" ],
     [],
-    [ "part_size" => "Part size in megabytes of multipart upload (default: 5)", { default => 5 } ],
+    [ "part_size=i" => "Part size in megabytes of multipart upload (default: 5)", { default => 5 } ],
     [],
     [ "verbose|v" => 'verbose mode', ],
     [ "debug|d"   => 'debug mode' ],
@@ -176,6 +176,11 @@ sub main {
   print( $usage->text ), exit(0) if $opt->help;
 
   $0 = "[bdatum-backup]";
+
+  if ($opt->part_size < 5 or $opt->part_size > 500) {
+    &_log_error("part_size option need to be > 5 or < 500.");
+    exit(0);
+  }
 
   # part size for multipart upload.
   $PART_LIMIT_SIZE = $opt->part_size * 1024 * 1024;
