@@ -642,7 +642,7 @@ sub _send_multipart {
   my @parts;
 
   while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
-    &log_info("sending part $if of $file");
+    &log_info("sending part $i of $file");
 
     my $uri = URI->new(BASE_URL);
     $uri->path('storage');
@@ -663,7 +663,7 @@ sub _send_multipart {
 
     my $res = _send_request($req);
 
-    &log_info("finish upload part $i of $file.";
+    &log_info("finish upload part $i of $file.");
   }
   $fh->close;
 
