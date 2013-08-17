@@ -60,8 +60,8 @@ use Config::Any::INI;
 use version; our $VERSION = qv('0.15'); # same line, keep backcompat with older MakeMaker
 
 use constant {
-  LIMIT    => 5 * 1024 * 1024,
   BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
+  LIMIT_PARTS => 10000,
 
   # file attrs
   MTIME   => 0,
@@ -87,7 +87,7 @@ our $b_datum_dir = "$ENV{HOME}/.b-datum";
 
 our ( $node_key, $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile, $ua, $pm );
-our ( $opt, $usage, $run_lock_fh );
+our ( $opt, $usage, $run_lock_fh, $PART_LIMIT_SIZE );
 
 our $parent_pid = $$;
 our $_abort     = 0;
@@ -166,6 +166,8 @@ sub main {
     [ "proxy_username=s" => "Proxy username" ],
     [ "proxy_password=s" => "Proxy password" ],
     [],
+    [ "part_size" => "Part size in megabytes of multipart upload (default: 5)", { default => 5 } ],
+    [],
     [ "verbose|v" => 'verbose mode', ],
     [ "debug|d"   => 'debug mode' ],
     [ 'help|h', "print usage message and exit" ],
@@ -174,6 +176,9 @@ sub main {
   print( $usage->text ), exit(0) if $opt->help;
 
   $0 = "[bdatum-backup]";
+
+  # part size for multipart upload.
+  $PART_LIMIT_SIZE = $opt->part_size * 1024 * 1024;
 
   # create base dir
   $stage_dir = join( '/', $b_datum_dir, 'stage' );
@@ -561,7 +566,7 @@ sub send_file {
 
   return _send_default(@_) if -l $file;
 
-  if ( -s $file < LIMIT ) {
+  if ( -s $file < $PART_LIMIT_SIZE ) {
     return _send_default(@_);
   }
   else {
@@ -618,7 +623,7 @@ sub _send_multipart {
   my $i = 1;
   my @parts;
 
-  while ( read( $fh, $buffer, LIMIT ) ) {
+  while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
     STDOUT->printflush("\t* sending part $i...");
 
     my $uri = URI->new(BASE_URL);
