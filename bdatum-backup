@@ -170,7 +170,7 @@ sub main {
     [ "part_size=i" => "Part size in megabytes of multipart upload (default: 5)", { default => 5 } ],
     [],
     [ "verbose|v" => 'verbose mode', ],
-    [ "debug|d"   => 'debug mode' ],
+    [ "debug"     => 'debug mode' ],
     [ 'help|h', "print usage message and exit" ],
   );
 
