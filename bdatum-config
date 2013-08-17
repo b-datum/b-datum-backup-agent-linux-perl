@@ -1,8 +1,20 @@
 #!/bin/bash
 
 # bdatum-config
-# Copyright (c) 2013 Thiago Rondon, b-datum.
-# http://www.b-datum.com/
+# Copyright (c) 2013 Thiago Rondon, http://www.b-datum.com/
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 which dialog &> /dev/null
 [ $? -ne 0 ]  && echo "Dialog utility is not available, Install it" && exit 1
@@ -45,6 +57,7 @@ path=$PATHDIR
 # path=another_path
 "
 	echo "$FILECONTENT" > $TARGET_FILE
+	chmod 0400 $TARGET_FILE
 }
 
 function _save_tmpfile() {
@@ -56,7 +69,6 @@ function _save_tmpfile() {
 	fi
 	echo "Save the new config in $ETC..."
 	mv -f $TMPFILE $ETC
-	chmod 0400 $ETC
 }
 
 function _ask_to_continue() {
