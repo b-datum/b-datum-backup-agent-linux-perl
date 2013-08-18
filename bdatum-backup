@@ -419,6 +419,12 @@ sub _log_warn {
   return &_log( 'warn', @_ );
 }
 
+sub is_folder_empty {
+  my $dirname = shift;
+  opendir(my $dh, $dirname) or die "Not a directory";
+  return scalar(grep { $_ ne "." && $_ ne ".." } readdir($dh)) == 0;
+}
+
 sub _get_lastbackup {
   my $lastbackup_file = &_make_control_file('lastbackup');
   return unless -e $lastbackup_file;
@@ -463,9 +469,11 @@ FILE: while ( defined( my $file = $files->() ) ) {
     &_log_info("processing: $file");
 
     if ( -d $file ) {
-      opendir( my $dh, $file ) || die "can't opendir $file: $!";
-      closedir($dh), _mkdir($file), next
-        unless readdir($dh);
+      if (is_folder_empty($file)) {
+         _mkdir($file);
+         $cache{"$file/"} = [];
+         next;
+      }
     }
 
     next if !-l $file && -d $file;
