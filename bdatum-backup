@@ -888,6 +888,7 @@ sub _read_cache {
   while ( my $line = $fh->getline ) {
     my $attrs = [ split /,/, $line ];
     my $file  = shift @$attrs;
+    chomp($file);
     my $stat  = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
     if ( !$stat ) {
       if ( !$opt->nodelete ) {
