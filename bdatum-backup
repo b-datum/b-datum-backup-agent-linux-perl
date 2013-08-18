@@ -469,9 +469,9 @@ FILE: while ( defined( my $file = $files->() ) ) {
     &_log_info("processing: $file");
 
     if ( -d $file ) {
+      $cache{"$file/"} = [];
       if (is_folder_empty($file)) {
          _mkdir($file);
-         $cache{"$file/"} = [];
          next;
       }
     }
