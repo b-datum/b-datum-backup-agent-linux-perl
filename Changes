@@ -1,3 +1,11 @@
+Release 0.17 Sun Aug 18 19:58:50 BRT 2013
+	- fix to remove dirs
+	- put all dirs in the cache file
+	- fix for backup empty dirs
+	- fast second-first backup algorithm
+	- _write_default_config, chmod 0400 $TARGET_FILE
+	- error_handler for File::Next to _log_error
+
 Release 0.16 Sat Aug 17 18:43:20 BRT 2013
 	- support for syslog
 	- daemon mode
