@@ -113,19 +113,24 @@ sub run {
     }
 
     last unless $opt->persistent;
-    sleep($opt->persistent_time);
     &check_alive;
+    sleep($opt->persistent_time);
   }
 
   &_remove_lock_running;
 }
 
 sub check_alive {
-  my $req = GET '/alive';
+  &_log_info("Sending alive to b-datum");
+
+  my $uri = URI->new(BASE_URL);
+  $uri->path('alive');
+
+  my $req = GET $uri;
   my $res = _send_request($req);
 
   if (!$res->is_success) {
-    &_log_warn("WARNING: can't send alive to b-datum");
+     &_log_warn("WARNING: can't send alive to b-datum");
   }
 
 }
@@ -323,8 +328,6 @@ sub main {
 
   close($manifest);
   unlink($manifest);
-
-  exit(0);
 }
 
 sub _get_files {
