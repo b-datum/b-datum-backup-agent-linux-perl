@@ -1,4 +1,4 @@
-Release 0.18
+Release 0.18 Wed Aug 21 13:29:53 BRT 2013
 	- chomp to fix compare in _get_changes to symlink
 	- check_alive to make agent linux online
 	- remove lastbackup file
