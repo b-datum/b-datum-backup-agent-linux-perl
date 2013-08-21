@@ -132,6 +132,8 @@ sub _check_already_running {
 sub _remove_lock_running {
   my $lock_file = &_make_control_file('lock');
   unlink($lock_file);
+  my $lastbackup_file = &_make_control_file('lastbackup');
+  unlink($lastbackup_file) if -e $lastbackup_file;
 }
 
 sub setup_manifest {
