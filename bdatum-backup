@@ -101,17 +101,17 @@ sub _unauthorized_abort {
   exit 77;    # EX_NOPERM
 }
 
-&setup_manifest;
 &run;
 
 sub run {
+  &options;
   while (1) {
-    eval { &main; };
+    &setup_manifest;
+    eval { &backup; };
 
     if ($@) {
       &_log_error($@);
     }
-
     last unless $opt->persistent;
     &check_alive;
     sleep($opt->persistent_time);
@@ -130,7 +130,7 @@ sub check_alive {
   my $res = _send_request($req);
 
   if (!$res->is_success) {
-     &_log_warn("WARNING: can't send alive to b-datum");
+    &_log_warn("WARNING: can't send alive to b-datum");
   }
 
 }
@@ -164,7 +164,7 @@ sub _create_local_dir {
   return $dir;
 }
 
-sub main {
+sub options {
   ( $opt, $usage ) = describe_options(
     "$0 - %o <some-arg>",
     [ "node_key|n=s"    => 'node key' ],
@@ -259,6 +259,9 @@ sub main {
   {
     &_log_error( "Required option missing.", 64 );
   }
+}
+
+sub backup {
 
   &_log_debug("Node key: $node_key");
   &_log_debug("Partner key: $partner_key");
