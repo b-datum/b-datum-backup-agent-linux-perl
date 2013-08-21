@@ -1,3 +1,9 @@
+Release 0.18
+	- chomp to fix compare in _get_changes to symlink
+	- check_alive to make agent linux online
+	- remove lastbackup file
+	- fix persistent mode with daemon.
+
 Release 0.17 Sun Aug 18 19:58:50 BRT 2013
 	- fix to remove dirs
 	- put all dirs in the cache file
