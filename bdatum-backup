@@ -899,6 +899,7 @@ sub _read_cache {
   my $t = time;
   my @to_delete;
   while ( my $line = $fh->getline ) {
+    chomp($line);
     my $attrs = [ split /,/, $line ];
     my $file  = shift @$attrs;
     chomp($file);
