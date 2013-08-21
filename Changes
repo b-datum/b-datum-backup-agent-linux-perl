@@ -1,3 +1,6 @@
+Release 0.19 Wed Aug 21 19:54:18 BRT 2013
+	- postinst: Don't run bdatum-config if box already has /etc/bdatum/backup.conf
+
 Release 0.18 Wed Aug 21 13:29:53 BRT 2013
 	- chomp to fix compare in _get_changes to symlink
 	- check_alive to make agent linux online
