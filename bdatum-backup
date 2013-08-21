@@ -114,9 +114,20 @@ sub run {
 
     last unless $opt->persistent;
     sleep($opt->persistent_time);
+    &check_alive;
   }
 
   &_remove_lock_running;
+}
+
+sub check_alive {
+  my $req = GET '/alive';
+  my $res = _send_request($req);
+
+  if (!$res->is_success) {
+    &_log_warn("WARNING: can't send alive to b-datum");
+  }
+
 }
 
 sub _check_already_running {

@@ -1,6 +1,4 @@
 - all options in config file
-- _die para tratar erros, e enviar para  
-- opção de zerar o cache remotamente.
-- last-backup
-- parametros de erros no config
-- uso opcional da area de stage.
+- _die para tratar erros, e enviar para /...
+- check if has space left to do backup based on stage directory.
+- option to remove cache remotely.
