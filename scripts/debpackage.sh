@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TARGET_DIR=b-datum-backup-agent-linux-perl/
+TARGET_DIR=b-datum-linux/
 
 if [ ! -d $TARGET_DIR ] ; then
 	echo "Where is $TARGET_DIR ?"
