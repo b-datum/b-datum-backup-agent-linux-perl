@@ -54,7 +54,6 @@ use Try::Tiny;
 use DateTime;
 use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
-use List::MoreUtils qw(pairwise);
 use Config::Any::INI;
 
 use version; our $VERSION = qv('0.20'); # same line, keep backcompat with older MakeMaker
@@ -96,6 +95,35 @@ our $_abort     = 0;
 $SIG{USR1} = sub {
   $_abort = 1;
 };
+
+# stripped from List::MoreUtils source
+sub pairwise (&\@\@) {
+  my $op = shift;
+
+  # Symbols for caller's input arrays
+  use vars qw{ @A @B };
+  local ( *A, *B ) = @_;
+
+  # Localise $a, $b
+  my ( $caller_a, $caller_b ) = do {
+    my $pkg = caller();
+    no strict 'refs';
+    \*{$pkg.'::a'}, \*{$pkg.'::b'};
+  };
+
+  # Loop iteration limit
+  my $limit = $#A > $#B? $#A : $#B;
+
+  # This map expression is also the return value
+  local( *$caller_a, *$caller_b );
+  map {
+    # Assign to $a, $b as refs to caller's array elements
+    ( *$caller_a, *$caller_b ) = \( $A[$_], $B[$_] );
+
+    # Perform the transformation
+    $op->();
+  }  0 .. $limit;
+}
 
 sub _unauthorized_abort {
   &_log_error("*** ERROR: 401 http unauthorized");
