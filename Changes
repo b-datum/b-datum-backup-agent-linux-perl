@@ -1,3 +1,5 @@
+See http://github.com/b-datum/b-datum-linux for the latest development.
+
 Release 0.19 Wed Aug 21 19:54:18 BRT 2013
 	- postinst: Don't run bdatum-config if box already has /etc/bdatum/backup.conf
 

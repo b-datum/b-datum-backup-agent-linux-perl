@@ -1,8 +1,8 @@
-# b-datum-backup-agent-linux-perl
+# b-datum-linux
 
 Ferramenta de backup b-datum (http://www.b-datum.com/) para Linux.
 
-[![Build Status](https://secure.travis-ci.org/b-datum/b-datum-backup-agent-linux-perl.png?branch=master)](https://travis-ci.org/b-datum/b-datum-backup-agent-linux-perl)
+[![Build Status](https://secure.travis-ci.org/b-datum/b-datum-linux.png?branch=master)](https://travis-ci.org/b-datum/b-datum-linux)
 
 ## Instalação
 
@@ -12,15 +12,15 @@ Para instalar no Ubuntu/Debian basta utilizar o pacote já pronto e utilizar o g
 # apt-get update
 # apt-get install gdebi-core
 # cd /tmp
-# wget https://github.com/b-datum/b-datum-backup-agent-linux-perl/releases/download/0.19/b-datum-backup-perl_0.19-1_all.deb
-# gdebi b-datum-backup-perl_0.19-1_all.deb
+# wget https://github.com/b-datum/b-datum-linux/releases/download/0.20/b-datum-linux-perl_0.20-1_all.deb
+# gdebi b-datum-linux-perl_0.20-1_all.deb
 ```
 
 Para realizar a instalação em um diretório de usuário e utilizar o
 perlbrew em qualquer distribuição, basta:
 
 ```
-$ curl -X GET https://raw.github.com/b-datum/b-datum-backup-agent-linux-perl/master/install.sh | bash
+$ curl -X GET https://raw.github.com/b-datum/b-datum-linux/master/install.sh | bash
 ```
 
 ## Configuração
