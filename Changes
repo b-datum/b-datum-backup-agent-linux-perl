@@ -1,5 +1,9 @@
 See http://github.com/b-datum/b-datum-linux for the latest development.
 
+Release 0.20 Sun Aug 25 11:42:34 BRT 2013
+        - New name for package, just b-datum-linux.
+        - Using Getopt::Long instead of ::Descriptive, a lot of dependencies (and XS)
+
 Release 0.19 Wed Aug 21 19:54:18 BRT 2013
 	- postinst: Don't run bdatum-config if box already has /etc/bdatum/backup.conf
 
