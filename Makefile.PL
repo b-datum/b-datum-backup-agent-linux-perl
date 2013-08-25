@@ -32,7 +32,6 @@ WriteMakefile(
     'DateTime'                   => 0,
     'Time::HiRes'                => 0,
     'Perl6::Junction'            => 0,
-    'List::MoreUtils'            => 0,
     'File::Slurp'                => 0,
     'File::Temp'                 => 0,
     'File::Copy'                 => 0,
