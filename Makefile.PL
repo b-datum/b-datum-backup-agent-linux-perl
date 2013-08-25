@@ -9,8 +9,8 @@ WriteMakefile(
   META_MERGE => {
     repository => {
       type => 'git',
-      url  => 'git@github.com:b-datum/b-datum-backup-agent-linux-perl.git',
-      web  => 'https://github.com/b-datum/b-datum-backup-agent-linux-perl'
+      url  => 'git@github.com:b-datum/b-datum-linux.git',
+      web  => 'https://github.com/b-datum/b-datum-linux'
     }
   },
   MIN_PERL_VERSION => '5.12.2',
@@ -25,7 +25,7 @@ WriteMakefile(
     'Digest::MD5'                => 0,
     'File::Next'                 => 0,
     'JSON'                       => 0,
-    'Getopt::Long::Descriptive'  => 0,
+    'Getopt::Long'               => 0,
     'File::MimeInfo'             => 0,
     'Parallel::ForkManager'      => 0,
     'Try::Tiny'                  => 0,

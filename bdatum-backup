@@ -48,7 +48,7 @@ use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
 use JSON qw(encode_json decode_json);
 
-use Getopt::Long::Descriptive;
+use Getopt::Long;
 use Parallel::ForkManager;
 use Try::Tiny;
 use DateTime;
@@ -87,8 +87,9 @@ our $b_datum_dir = "$ENV{HOME}/.b-datum";
 
 our ( $node_key, $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile, $ua, $pm );
-our ( $opt, $usage, $run_lock_fh, $PART_LIMIT_SIZE );
+our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
 
+our $opt = {};
 our $parent_pid = $$;
 our $_abort     = 0;
 
@@ -112,9 +113,9 @@ sub run {
     if ($@) {
       &_log_error($@);
     }
-    last unless $opt->persistent;
+    last unless $opt->{persistent};
     &check_alive;
-    sleep($opt->persistent_time);
+    sleep($opt->{persistent_time});
   }
 
   &_remove_lock_running;
@@ -164,59 +165,112 @@ sub _create_local_dir {
   return $dir;
 }
 
-sub options {
-  ( $opt, $usage ) = describe_options(
-    "$0 - %o <some-arg>",
-    [ "node_key|n=s"    => 'node key' ],
-    [ "partner_key|p=s" => 'partner key' ],
-    [ "path=s"          => 'target path' ],
-    [],
-    [ "nodelete|k" => q{don't remove in remote storage files deleted} ],
-    [ "workers|w"  => 'number of workers (default: 5)', { default => 5 } ],
-    [ "daemon|d"   => "Daemon mode" ],
-    [ "config|c=s" => 'config file' ],
-    [ "profile=s"  => 'load profile' ],
-    [ "persistent" => 'persistent mode' ],
-    [ "persistent_time=i" => 'time in seconds for run again the scan in directory to do backup (default: 180)', { default => 180 } ],
-    [ "retry_time=i" => 'time to retry the request to bdatum if some request fails (default: 30)', { default => 30 } ],
-    [],
-    [ "proxy_scheme=s"   => "Proxy schema (Default: http)" ],
-    [ "proxy_server=s"   => "Proxy server" ],
-    [ "proxy_username=s" => "Proxy username" ],
-    [ "proxy_password=s" => "Proxy password" ],
-    [],
-    [ "part_size=i" => "Part size in megabytes of multipart upload (default: 5)", { default => 5 } ],
-    [],
-    [ "verbose|v" => 'verbose mode', ],
-    [ "debug"     => 'debug mode' ],
-    [ 'help|h', "print usage message and exit" ],
-  );
+sub show_help {
+  my $wrong_argv = shift;
+  if ($wrong_argv) {
+    print <<USAGE;
+Usage: bdatum-backup [options] [...]
 
-  print( $usage->text ), exit(0) if $opt->help;
+Try `bdatum-backup --help` for more options.
+USAGE
+    exit(1);
+   }
+  print <<HELP;
+Usage: bdatum-backup [options] [...]
+
+    -n,--node_key          node key
+    -p,--partner_key       partner key
+    --path                 target path
+
+    -k,--nodelete          don't remove in remote storage files deleted
+    -w,--workers           number of workers (default: 5)
+    -d,--daemon            Daemon mode
+    -c,--config            config file
+    --profile              load profile
+    --persistent           persistent mode
+    --persistent_time      time in seconds for run again the scan in directory to do backup (default: 180)
+    --retry_time           time to retry the request to bdatum if some request fails (default: 30)
+
+    --proxy_scheme         Proxy schema (Default: http)
+    --proxy_server         Proxy server
+    --proxy_username       Proxy username
+    --proxy_password       Proxy password
+
+    --part_size            Part size in megabytes of multipart upload (default: 5)
+
+    -v,--verbose           verbose mode
+    --debug                debug mode
+    -h,--help              print usage message and exit
+
+  Examples:
+
+    bdatum-backup -n 12345678901234567890 -p 12345678901234567890 --path /var
+    bdatum-backup --proxy_server 10.0.0.1 --proxy_port 8080 --proxy_username foo --proxy_password bar
+    bdatum-backup --persistent --daemon
+
+HELP
+  exit(0);
+}
+
+sub options {
+  GetOptions(
+    "node_key|n=s"    => \$opt->{node_key},
+    "partner_key|p=s" => \$opt->{partner_key},
+    "path=s"          => \$opt->{path},
+   
+    "nodelete|k"        => \$opt->{nodelete},
+    "workers|w"         => \$opt->{workers},
+    "daemon|d"          => \$opt->{daemon},
+    "config|c=s"        => \$opt->{config},
+    "profile=s"         => \$opt->{profile},
+    "persistent"        => \$opt->{persistent},
+    "persistent_time=i" => \$opt->{persistent_time},
+    "retry_time=i"      => \$opt->{retry_time},
+
+    "proxy_schema=s"   => \$opt->{proxy_schema},
+    "proxy_server=s"   => \$opt->{proxy_server},
+    "proxy_username=s" => \$opt->{proxy_username},
+    "proxy_password=s" => \$opt->{proxy_password},
+
+    "part_size=i" => \$opt->{part_size},
+
+    "verbose|v" => \$opt->{verbose},
+    "debug"     => \$opt->{debug},
+    "help"      => \$opt->{help},
+  ) or &show_help(1);
+
+  &show_help if $opt->{help};
 
   $0 = "[bdatum-backup]";
 
+  # Defaults
+  $opt->{part_size}       ||= 5;
+  $opt->{workers}         ||= 5;
+  $opt->{persistent_time} ||= 180;
+  $opt->{retry_time}      ||= 30;
+  $opt->{proxy_scheme}    ||= 'http';
+
   # Daemon
-  if ($opt->daemon) {
+  if ($opt->{daemon}) {
     my $main_pid = fork();
     die "cannot fork" unless defined $main_pid;
     exit 0 if $main_pid != 0;
   }
 
   # Check part_size
-  if ($opt->part_size < 5 or $opt->part_size > 500) {
+  if ($opt->{part_size} < 5 or $opt->{part_size} > 500) {
     &_log_error("part_size option need to be > 5 or < 500.");
     exit(0);
   }
 
   # part size for multipart upload.
-  $PART_LIMIT_SIZE = $opt->part_size * 1024 * 1024;
+  $PART_LIMIT_SIZE = $opt->{part_size} * 1024 * 1024;
 
   # create base dir
   $stage_dir = join( '/', $b_datum_dir, 'stage' );
   &_create_local_dir($b_datum_dir);
   &_create_local_dir($stage_dir);
-  $configfile = $opt->config || '/etc/bdatum/backup.conf';
+  $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
 
   if ( -r $configfile ) {
     my $st = stat $configfile;
@@ -226,7 +280,7 @@ sub options {
     }
 
     my $config_all = Config::Any::INI->load($configfile);
-    my $profile    = $opt->profile;
+    my $profile    = $opt->{profile};
 
     my $config =
       defined $profile && exists $config_all->{$profile}
@@ -249,9 +303,9 @@ sub options {
   # for linux
   push( @blacklist, qr/^\/proc\//, qr/^\/sys\// );
 
-  $node_key    = $opt->node_key    if $opt->node_key;
-  $partner_key = $opt->partner_key if $opt->partner_key;
-  $path        = $opt->path        if $opt->path;
+  $node_key    = $opt->{node_key}    if $opt->{node_key};
+  $partner_key = $opt->{partner_key} if $opt->{partner_key};
+  $path        = $opt->{path}        if $opt->{path};
 
   if ( !&_validate_key($node_key)
     or !&_validate_key($partner_key)
@@ -285,11 +339,11 @@ sub backup {
     agent                 => "bdatum-backup/$VERSION (Linux)",
   );
 
-  if ( $opt->proxy_server ) {
-    my $scheme   = $opt->proxy_scheme || 'http';
-    my $server   = $opt->proxy_server;
-    my $username = $opt->proxy_username;
-    my $password = $opt->proxy_password;
+  if ( $opt->{proxy_server} ) {
+    my $scheme   = $opt->{proxy_scheme};
+    my $server   = $opt->{proxy_server};
+    my $username = $opt->{proxy_username};
+    my $password = $opt->{proxy_password};
 
     # For HTTP
     my $proxy = "$scheme://$username:$password\@$server";
@@ -311,17 +365,17 @@ sub backup {
 
   $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
     if LWP::UserAgent::Determined->can('ssl_opts');
-  $ua->timing($opt->retry_time);
+  $ua->timing($opt->{retry_time});
   $ua->conn_cache($ua_cache);
   $ua->add_handler( request_prepare =>
       sub { shift->authorization_basic( $node_key, $partner_key ); } );
 
-  if ( $opt->verbose ) {
+  if ( $opt->{verbose} ) {
     $ua->add_handler( "request_send",  sub { shift->dump; return } );
     $ua->add_handler( "response_done", sub { shift->dump; return } );
   }
 
-  $pm = Parallel::ForkManager->new( $opt->workers );
+  $pm = Parallel::ForkManager->new( $opt->{workers} );
 
   start();
 
@@ -415,12 +469,12 @@ sub _log {
   syslog($syslog_level, "[$level] $msg");
   closelog();
 
-  print "[$level] $msg\n" unless $opt->daemon;
+  print "[$level] $msg\n" unless $opt->{daemon};
   return 1;
 }
 
 sub _log_debug {
-  return unless $opt->debug;
+  return unless $opt->{debug};
   return &_log( 'debug', @_ );
 }
 
@@ -911,7 +965,7 @@ sub _read_cache {
     chomp($file);
     my $stat  = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
     if ( !$stat ) {
-      if ( !$opt->nodelete ) {
+      if ( !$opt->{nodelete} ) {
         push( @to_delete, $file );
       }
       next;
@@ -924,7 +978,7 @@ sub _read_cache {
   close($fh);
   undef($fh);
 
-  if ( !$opt->nodelete && @to_delete ) {
+  if ( !$opt->{nodelete} && @to_delete ) {
     _delete_files(@to_delete);
   }
 
