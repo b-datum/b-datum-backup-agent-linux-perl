@@ -165,6 +165,12 @@ sub _create_local_dir {
   return $dir;
 }
 
+sub show_version {
+  print "bdatum-backup version $VERSION ($0)\n";
+  print "perl version $] ($^X)\n\n";
+  exit(0);
+}
+
 sub show_help {
   my $wrong_argv = shift;
   if ($wrong_argv) {
@@ -234,11 +240,13 @@ sub options {
 
     "part_size=i" => \$opt->{part_size},
 
-    "verbose|v" => \$opt->{verbose},
+    "version|v" => \$opt->{version},
+    "verbose"   => \$opt->{verbose},
     "debug"     => \$opt->{debug},
     "help"      => \$opt->{help},
   ) or &show_help(1);
 
+  &show_version if $opt->{version};
   &show_help if $opt->{help};
 
   $0 = "[bdatum-backup]";
