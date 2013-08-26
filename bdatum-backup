@@ -51,7 +51,6 @@ use JSON qw(encode_json decode_json);
 use Getopt::Long;
 use Parallel::ForkManager;
 use Try::Tiny;
-use DateTime;
 use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
@@ -552,7 +551,7 @@ sub _write_lastbackup {
 sub start {
   my %cache = _read_cache();
 
-  my $start = DateTime->now( time_zone => 'local' );
+  my $start = time();
   my $files = &_get_files();
   my $lastbackup_file = &_get_lastbackup;
   my $lastbackup_run = $lastbackup_file ? 1 : 0;
@@ -645,7 +644,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   $pm->wait_all_children;
 
-  my $end = DateTime->now( time_zone => 'local' );
+  my $end = time();
   &_log_info("*\n*\n*\n* Started: $start");
   &_log_info("* Completed: $end");
 

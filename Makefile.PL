@@ -29,7 +29,6 @@ WriteMakefile(
     'File::MimeInfo'             => 0,
     'Parallel::ForkManager'      => 0,
     'Try::Tiny'                  => 0,
-    'DateTime'                   => 0,
     'Time::HiRes'                => 0,
     'Perl6::Junction'            => 0,
     'File::Slurp'                => 0,
