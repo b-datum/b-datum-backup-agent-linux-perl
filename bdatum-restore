@@ -74,6 +74,28 @@ our $opt        = {};
 our $parent_pid = $$;
 our $_abort     = 0;
 
+our %meta_actions = (
+  gid => sub {
+    return unless $opt->{preserve_ownership};
+    my ( $gid, $file, $destination_file ) = @_;
+    print qq{Setting gid of "$file" to "$gid"\n};
+    chown( -1, $gid, $destination_file );
+  },
+  uid => sub {
+    return unless $opt->{preserve_ownership};
+    my ( $uid, $file, $destination_file ) = @_;
+    print qq{Setting uid of "$file" to "$uid"\n};
+    chown( $uid, -1, $destination_file );
+
+  },
+  mode => sub {
+    return unless $opt->{preserve_ownership};
+    my ( $mode, $file, $destination_file ) = @_;
+    printf qq{Setting mode of "$file" to "%04o"\n}, $mode & 07777;
+    chmod $mode & 07777, $destination_file;
+  }
+);
+
 $SIG{USR1} = sub {
   $_abort = 1;
 };
@@ -219,9 +241,9 @@ sub options {
     "proxy-username=s" => \$opt->{proxy_username},
     "proxy-password=s" => \$opt->{proxy_password},
 
-    "basedir|b=s"          => \$opt->{basedir},
-    "mode|m=s"             => \$opt->{mode},
-    "preserve-ownership" => \$opt->{preserve_ownsership},
+    "basedir|b=s"        => \$opt->{basedir},
+    "mode|m=s"           => \$opt->{mode},
+    "preserve-ownership" => \$opt->{preserve_ownership},
 
     "version|v" => \$opt->{version},
     "verbose"   => \$opt->{verbose},
@@ -458,11 +480,16 @@ sub start {
     &_log_info("processing: $file");
 
     my $destination_file =
-      $opt->{basedir} ? File::Spec->catfile( $opt->{basedir}, $file ) : $file;
+      $opt->{basedir}
+      ? File::Spec->canonpath( File::Spec->catfile( $opt->{basedir}, $file ) )
+      : $file;
 
-    _mkdir_p($destination_file), next if $file =~ /\/$/ && !-d $file;
+    if ( $file =~ /\/$/ ) {
+      _mkdir_p($destination_file) if !-d $destination_file;
+      next;
+    }
 
-    &_log_info("Downloading $file...");
+    &_log_info("Downloading to $destination_file ...");
 
     {
       $pm->start and next;
@@ -495,22 +522,14 @@ sub start {
   &_log_info("* Completed: $end");
 }
 
-my %meta_actions = (
-  gid =>
-    sub { return unless $opt->{preserve_ownsership}; warn "GID: " . shift },
-  uid =>
-    sub { return unless $opt->{preserve_ownsership}; warn "UID: " . shift },
-  mode =>
-    sub { return unless $opt->{preserve_ownsership}; warn "MODE: " . shift }
-);
-
 sub _process_metadata {
   my $header_name = shift;
-
   return unless $header_name =~ /^x-meta-b-datum-field-/i;
   $header_name = lc $header_name;
   $header_name =~ s/^x-meta-b-datum-field-//;
+  chomp($header_name);
 
+  $header_name = 'mode' if $header_name eq 'umask';
   $meta_actions{$header_name}->(@_)
     if exists $meta_actions{$header_name};
 }
