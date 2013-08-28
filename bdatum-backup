@@ -46,7 +46,7 @@ use Net::SSL ();
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
-use JSON qw(encode_json decode_json);
+use JSON::PP qw(encode_json decode_json);
 
 use Getopt::Long;
 use Parallel::ForkManager;
@@ -84,7 +84,7 @@ my %metadata_map = (
 our $b_datum_dir = "$ENV{HOME}/.b-datum";
 
 our ( $node_key, $partner_key, $path, @blacklist, $manifest );
-our ( $stage_dir, $configfile, $ua, $pm );
+our ( $stage_dir, $configfile, $ua, $pm, $main_pid );
 our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
 
 our $opt = {};
@@ -287,7 +287,7 @@ sub options {
 
   # Daemon
   if ($opt->{daemon}) {
-    my $main_pid = fork();
+    $main_pid = fork();
     die "cannot fork" unless defined $main_pid;
     exit 0 if $main_pid != 0;
   }
@@ -944,7 +944,7 @@ sub _send_request {
   my $res = $ua->request($req);
   if ( !$res->is_success ) {
     if ( $res->code == 401 ) {
-      kill USR1 => $parent_pid;
+      kill USR1 => $parent_pid, $main_pid;
       exit;
     }
     confess $res->as_string;
