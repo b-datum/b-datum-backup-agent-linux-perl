@@ -1,0 +1,670 @@
+#!/usr/bin/env perl
+
+# bdatum-restore
+# Copyright (c) 2013 b-datum, http://www.b-datum.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+$0 = "[bdatum-restore]";
+
+use utf8;
+use strict;
+use warnings qw(FATAL utf8);
+use open qw(:std :utf8);
+use Carp;
+use Sys::Syslog qw(:standard :macros);
+
+use File::Next;
+use File::stat;
+use File::Spec;
+use File::Path;
+use File::Basename;
+use File::Copy;
+use File::Slurp qw(read_file);
+use File::Temp qw/ :seekable tempdir /;
+use File::MimeInfo::Magic;
+use Fcntl qw(:flock SEEK_END);
+use IO::Handle;
+use IO::File;
+use Digest::MD5::File qw(file_md5_hex);
+use Digest::MD5 qw(md5_hex);
+use Cwd qw(abs_path);
+
+use Encode;
+
+use LWP::UserAgent::Determined;
+use LWP::ConnCache;
+use IO::Socket::SSL;
+use Net::SSL ();
+use URI;
+use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
+use HTTP::Request;
+use JSON qw(encode_json decode_json);
+
+use Getopt::Long;
+use Parallel::ForkManager;
+use Try::Tiny;
+use Time::HiRes qw(time);
+use Perl6::Junction qw(all);
+use Config::Any::INI;
+
+use version; our $VERSION = qv('0.01'); # same line, keep backcompat with older MakeMaker
+
+use constant { BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
+};
+
+our $b_datum_dir = "$ENV{HOME}/.b-datum";
+
+our ( $node_key, $partner_key, $path, @blacklist, $manifest );
+our ( $stage_dir, $configfile, $ua, $pm );
+our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
+
+our $opt        = {};
+our $parent_pid = $$;
+our $_abort     = 0;
+
+$SIG{USR1} = sub {
+  $_abort = 1;
+};
+
+sub _unauthorized_abort {
+  &_log_error("*** ERROR: 401 http unauthorized");
+  exit 77;    # EX_NOPERM
+}
+
+&run;
+
+sub run {
+  &options;
+  while (1) {
+    &setup_manifest;
+    eval { &restore; };
+
+    if ($@) {
+      &_log_error($@);
+    }
+    last unless $opt->{persistent};
+    &check_alive;
+    sleep( $opt->{persistent_time} );
+  }
+
+  &_remove_lock_running;
+}
+
+sub check_alive {
+  &_log_info("Sending alive to b-datum");
+
+  my $uri = URI->new(BASE_URL);
+  $uri->path('alive');
+
+  my $req = GET $uri;
+  my $res = _send_request($req);
+
+  if ( !$res->is_success ) {
+    &_log_warn("WARNING: can't send alive to b-datum");
+  }
+
+}
+
+sub _check_already_running {
+  my $lock_file = &_make_control_file('lock');
+  if ( -f $lock_file ) {
+    open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
+    flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
+  }
+  open( FHL, ">", $lock_file ) or die "Cannot open $lock_file - $!";
+  flock( FHL, LOCK_EX | LOCK_NB );
+}
+
+sub _remove_lock_running {
+  my $lock_file = &_make_control_file('lock');
+  unlink($lock_file);
+  my $lastrestore_file = &_make_control_file('lastrestore');
+  unlink($lastrestore_file) if -e $lastrestore_file;
+}
+
+sub setup_manifest {
+  $manifest = File::Temp->new( UNLINK => 0, )
+    or die q{Couldn't create manifest file};
+}
+
+sub _create_local_dir {
+  my $dir = shift;
+  mkdir($dir) unless -d $dir;
+  die "*** ERROR: Can't create directory $dir" unless -d $dir;
+  return $dir;
+}
+
+sub show_version {
+  print "$0 version $VERSION ($0)\n";
+  print "perl version $] ($^X)\n\n";
+  exit(0);
+}
+
+sub show_help {
+  my $wrong_argv = shift;
+  if ($wrong_argv) {
+    print <<"USAGE";
+Usage: $0 [options] [...]
+
+Try `$0 --help` for more options.
+USAGE
+    exit(1);
+  }
+  print <<"HELP";
+Usage: $0 [options] [...]
+
+    -n,--node-key          node key
+    -p,--partner-key       partner key
+
+    -k,--nodelete          don't remove in remote storage files deleted
+    -w,--workers           number of workers (default: 5)
+    -d,--daemon            Daemon mode
+    -c,--config            config file
+    --profile              load profile
+    --persistent           persistent mode
+    --persistent-time      time in seconds for run again the scan in directory to do restore (default: 180)
+    --retry-time           time to retry the request to bdatum if some request fails (default: 30)
+
+    --proxy-scheme         Proxy schema (Default: http)
+    --proxy-server         Proxy server
+    --proxy-username       Proxy username
+    --proxy-password       Proxy password
+
+    -b --basedir           Directory where to place the restored data (created if doesn't exist, defaults to same as it was stored)
+    -m --mode              Sets this mode for every restored file and directory (default: 0777)
+    --preserve-ownership   Preserve ownership of restored files when they were uploaded. Takes precedence over --mode
+
+    -v,--verbose           verbose mode
+    --debug                debug mode
+    -h,--help              print usage message and exit
+
+  Examples:
+
+    $0 -n 12345678901234567890 -p 12345678901234567890 --path /var
+    $0 --proxy-server 10.0.0.1 --proxy-port 8080 --proxy-username foo --proxy-password bar
+    $0 --persistent --daemon
+
+HELP
+  exit(0);
+}
+
+sub options {
+  GetOptions(
+    "node-key|n=s"    => \$opt->{node_key},
+    "partner-key|p=s" => \$opt->{partner_key},
+
+    "nodelete|k"        => \$opt->{nodelete},
+    "workers|w"         => \$opt->{workers},
+    "daemon|d"          => \$opt->{daemon},
+    "config|c=s"        => \$opt->{config},
+    "profile=s"         => \$opt->{profile},
+    "persistent"        => \$opt->{persistent},
+    "persistent-time=i" => \$opt->{persistent_time},
+    "retry-time=i"      => \$opt->{retry_time},
+
+    "proxy-schema=s"   => \$opt->{proxy_schema},
+    "proxy-server=s"   => \$opt->{proxy_server},
+    "proxy-username=s" => \$opt->{proxy_username},
+    "proxy-password=s" => \$opt->{proxy_password},
+
+    "basedir|b=s"          => \$opt->{basedir},
+    "mode|m=s"             => \$opt->{mode},
+    "preserve-ownership" => \$opt->{preserve_ownsership},
+
+    "version|v" => \$opt->{version},
+    "verbose"   => \$opt->{verbose},
+    "debug"     => \$opt->{debug},
+    "help"      => \$opt->{help},
+  ) or &show_help(1);
+
+  &show_version if $opt->{version};
+  &show_help    if $opt->{help};
+
+  # Defaults
+  $opt->{workers}         ||= 5;
+  $opt->{persistent_time} ||= 180;
+  $opt->{retry_time}      ||= 30;
+  $opt->{proxy_scheme}    ||= 'http';
+
+  # Daemon
+  if ( $opt->{daemon} ) {
+    my $main_pid = fork();
+    die "cannot fork" unless defined $main_pid;
+    exit 0 if $main_pid != 0;
+  }
+
+  # create base dir
+  $stage_dir = join( '/', $b_datum_dir, 'stage' );
+  &_create_local_dir($b_datum_dir);
+  &_create_local_dir($stage_dir);
+  $configfile = $opt->{config} || '/etc/bdatum/restore.conf';
+
+  if ( -r $configfile ) {
+    my $st = stat $configfile;
+    my $mode = sprintf( '%04o', $st->mode & 07777 );
+    if ( $mode ne '0400' ) {
+      &_log_error( "Please run 'chmod 0400 $configfile'", 78 );
+    }
+
+    my $config_all = Config::Any::INI->load($configfile);
+    my $profile    = $opt->{profile};
+
+    my $config =
+      defined $profile && exists $config_all->{$profile}
+      ? $config_all->{$profile}
+      : $config_all;
+
+    $node_key    = $config->{node_key};
+    $partner_key = $config->{partner_key};
+    $path        = $config->{basedir};
+  }
+
+  $node_key    = $opt->{node_key}    if $opt->{node_key};
+  $partner_key = $opt->{partner_key} if $opt->{partner_key};
+  $path        = $opt->{basedir}     if $opt->{basedir};
+
+  &_validate_key($node_key);
+  &_validate_key($partner_key);
+  &_validate_basedir($path);
+
+}
+
+sub restore {
+
+  &_log_debug("Node key: $node_key");
+  &_log_debug("Partner key: $partner_key");
+  &_log_debug("Path: $path");
+
+  &_check_already_running;
+
+  my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
+  my $context   = IO::Socket::SSL::SSL_Context->new(
+    SSL_verify_mode   => 0,
+    SSL_session_cache => $ssl_cache
+  );
+  IO::Socket::SSL::set_default_context($context);
+  IO::Socket::SSL::set_default_session_cache($ssl_cache);
+
+  my $ua_cache = LWP::ConnCache->new();
+  $ua_cache->total_capacity(10);
+
+  $ua = LWP::UserAgent::Determined->new(
+    requests_redirectable => [qw(GET HEAD DELETE PUT POST)],
+    agent                 => "$0/$VERSION (Linux)",
+  );
+
+  if ( $opt->{proxy_server} ) {
+    my $scheme   = $opt->{proxy_scheme};
+    my $server   = $opt->{proxy_server};
+    my $username = $opt->{proxy_username};
+    my $password = $opt->{proxy_password};
+
+    # For HTTP
+    my $proxy = "$scheme://$username:$password\@$server";
+    $ua->proxy( [$scheme], $proxy );
+
+    # For HTTPS
+    $proxy                             = "$scheme://$server";
+    $ENV{HTTPS_PROXY}                  = $proxy;
+    $ENV{HTTPS_PROXY_USERNAME}         = $username;
+    $ENV{HTTPS_PROXY_PASSWORD}         = $password;
+    $ENV{HTTP_PROXY}                   = $proxy;
+    $ENV{HTTP_PROXY_USERNAME}          = $username;
+    $ENV{HTTP_PROXY_PASSWORD}          = $password;
+    $Net::HTTPS::SSL_SOCKET_CLASS      = "Net::SSL";
+    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+    $ua->env_proxy(1);
+
+  }
+
+  $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
+    if LWP::UserAgent::Determined->can('ssl_opts');
+  $ua->timing( $opt->{retry_time} );
+  $ua->conn_cache($ua_cache);
+  $ua->add_handler( request_prepare =>
+      sub { shift->authorization_basic( $node_key, $partner_key ); } );
+
+  if ( $opt->{verbose} ) {
+    $ua->add_handler( "request_send",  sub { shift->dump; return } );
+    $ua->add_handler( "response_done", sub { shift->dump; return } );
+  }
+
+  $pm = Parallel::ForkManager->new( $opt->{workers} );
+
+  start();
+
+  $pm->wait_all_children;
+
+  _send_manifest();
+
+  close($manifest);
+  unlink($manifest);
+}
+
+sub _get_files {
+
+  my $uri = URI->new(BASE_URL);
+  $uri->path('storage');
+
+  $uri->query_form(
+    path => ( $opt->{target_dir} || '/' ),
+    flatten      => 1,
+    _for_restore => 1
+  );
+
+  my $req = HTTP::Request->new( 'GET', $uri );
+  my $res = _send_request($req);
+  my $json;
+  eval { $json = decode_json( $res->content ); };
+  &_log_error("Got an invalid file list") if $@ || !$json;
+  return $json->{objects};
+}
+
+sub _validate_key {
+  my $key = shift || return 0;
+  my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
+  &_log_error("The key must be [a-zA-Z0-9]{20} -- $key"),
+    &_log_error( "Required option missing.", 64 )
+    unless $val;
+
+  return $val;
+}
+
+sub _validate_basedir {
+  my $path = shift || return 0;
+  my $ok = ( -d $path ) && ( -w $path );
+  &_log_error("The directory does not exist or is not writable -- $path"),
+    &_log_error( "Required option missing: --basedir", 64 )
+    unless $ok;
+
+  return $ok;
+}
+
+sub _log {
+  my $level = shift;
+  my $msg = join( ' ', @_ );
+
+  my $syslog_level = LOG_INFO;
+  $syslog_level = LOG_DEBUG   if $level eq 'debug';
+  $syslog_level = LOG_WARNING if $level eq 'warn';
+  $syslog_level = LOG_ERR     if $level eq 'error';
+
+  openlog( $0, 'pid', LOG_USER );
+  syslog( $syslog_level, "[$level] $msg" );
+  closelog();
+
+  print "[$level] $msg\n" unless $opt->{daemon};
+  return 1;
+}
+
+sub _log_debug {
+  return unless $opt->{debug};
+  return &_log( 'debug', @_ );
+}
+
+sub _log_error {
+  my ( $msg, $exit ) = @_;
+  &_log( 'error', $msg );
+  exit $exit if $exit;
+}
+
+sub _log_info {
+  return &_log( 'info', @_ );
+}
+
+sub _log_warn {
+  return &_log( 'warn', @_ );
+}
+
+sub _get_lastrestore {
+  my $lastrestore_file = &_make_control_file('lastrestore');
+  return unless -e $lastrestore_file;
+  my $content = do { local ( @ARGV, $/ ) = $lastrestore_file; <> };
+  return $content;
+}
+
+sub _write_lastrestore {
+  my $file             = shift;
+  my $lastrestore_file = &_make_control_file('lastrestore');
+  open my $fh, '>', $lastrestore_file;
+  print $fh time;
+  close $fh;
+}
+
+sub start {
+  my %cache = _read_cache();
+
+  my $start = time();
+  my $files = &_get_files();
+
+  while ( defined( my $file = shift @$files ) ) {
+
+    # abort restore if we receive unauthorized response from bdatum.
+    _unauthorized_abort() if $_abort;
+
+    # here we go.
+    &_log_info("processing: $file");
+
+    my $destination_file =
+      $opt->{basedir} ? File::Spec->catfile( $opt->{basedir}, $file ) : $file;
+
+    _mkdir_p($destination_file), next if $file =~ /\/$/ && !-d $file;
+
+    &_log_info("Downloading $file...");
+
+    {
+      $pm->start and next;
+
+      my $attempt = 0;
+      my $error;
+      do {
+        try {
+          my $res = _fetch( $file, $destination_file );
+          $res->headers->scan(
+            sub { _process_metadata( @_, $file, $destination_file ) } );
+        }
+
+        catch { $error = $_; sleep(3); };
+        if ($error) {
+          &_log_warn("Error fetching $file trying again... $attempt");
+          &_log_warn("\t\t$error");
+        }
+      } while ( $error && ( $attempt++ < 3 ) );
+
+      $pm->finish;
+
+    }
+  }
+
+  $pm->wait_all_children;
+
+  my $end = time();
+  &_log_info("*\n*\n*\n* Started: $start");
+  &_log_info("* Completed: $end");
+}
+
+my %meta_actions = (
+  gid =>
+    sub { return unless $opt->{preserve_ownsership}; warn "GID: " . shift },
+  uid =>
+    sub { return unless $opt->{preserve_ownsership}; warn "UID: " . shift },
+  mode =>
+    sub { return unless $opt->{preserve_ownsership}; warn "MODE: " . shift }
+);
+
+sub _process_metadata {
+  my $header_name = shift;
+
+  return unless $header_name =~ /^x-meta-b-datum-field-/i;
+  $header_name = lc $header_name;
+  $header_name =~ s/^x-meta-b-datum-field-//;
+
+  $meta_actions{$header_name}->(@_)
+    if exists $meta_actions{$header_name};
+}
+
+sub _mkdir_p {
+  my ($file) = @_;
+  File::Path::make_path( $file, 0, $opt->{mode} );
+  return 1;
+}
+
+sub _fetch {
+  my ( $file, $destination_file ) = @_;
+
+  my $uri = URI->new(BASE_URL);
+  $uri->path('storage');
+
+  $uri->query_form( path => $file );
+
+  my $req = HTTP::Request->new( 'GET', $uri );
+
+  return _send_request( $req, $destination_file );
+}
+
+sub _send_request {
+
+  my ( $req, $dest_file ) = @_;
+  my $res = $ua->request( $req, $dest_file );
+  if ( !$res->is_success ) {
+    if ( $res->code == 401 ) {
+      kill USR1 => $parent_pid;
+      exit;
+    }
+    confess $res->as_string;
+  }
+  return $res;
+
+}
+
+sub _make_control_file {
+  my $suffix = shift;
+  my $base   = md5_hex( $node_key . $partner_key . $path );
+  return "$b_datum_dir/$base.$suffix";
+}
+
+sub _read_cache {
+  #
+  # Slurp cache File
+  #
+
+  my $cache_file = &_make_control_file('cache');
+  my %cache;
+  my $cache_file_version = &_filename_cache_version($cache_file);
+
+  my $cache_version = &_read_cache_version($cache_file_version);
+  if ( version->parse($cache_version) != version->parse($VERSION) ) {
+    &_log_info("Remove cache version file: $cache_file_version");
+    &_log_info("Remove cache file: $cache_file");
+    unlink($cache_file_version);
+    unlink($cache_file);
+  }
+
+  return () unless -e $cache_file;
+
+  open( my $fh, '<:unix:encoding(UTF-8)', $cache_file )
+    or die "Cannot open $cache_file";
+
+  my $t = time;
+  my @to_delete;
+  while ( my $line = $fh->getline ) {
+    chomp($line);
+    my $attrs = [ split /,/, $line ];
+    my $file = shift @$attrs;
+    chomp($file);
+    my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
+    if ( !$stat ) {
+      if ( !$opt->{nodelete} ) {
+        push( @to_delete, $file );
+      }
+      next;
+    }
+
+    $cache{$file} = $attrs;
+  }
+  &_log_info( 'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+
+  close($fh);
+  undef($fh);
+
+  if ( !$opt->{nodelete} && @to_delete ) {
+    _delete_files(@to_delete);
+  }
+
+  return %cache;
+}
+
+sub _filename_cache_version {
+  join( '.', shift, 'version' );
+}
+
+sub _update_cache_version {
+  my $filename = shift;
+  my $fh = IO::File->new( $filename, 'w', ':unix' )
+    or die "Cannot open $filename";
+  print $fh $VERSION;
+}
+
+sub _read_cache_version {
+  my $filename = shift;
+  return qv(0) unless -r $filename;
+  my $content = do { local ( @ARGV, $/ ) = $filename; <> };
+  return $content if qv($content)->is_qv;
+  return qv(0);
+}
+
+sub _write_cache {
+  my (%cache)            = @_;
+  my $t                  = time;
+  my $cache_file         = &_make_control_file('cache');
+  my $cache_file_version = &_filename_cache_version($cache_file);
+  &_update_cache_version($cache_file_version);
+
+  open( my $fh, '>:unix', $cache_file )
+    or die "Cannot open $cache_file";
+
+  print {$fh}
+    map {
+    my $attrs = $cache{$_};
+    Encode::encode_utf8( join( q{,}, $_, @$attrs ) . "\n" );
+    }
+    keys %cache;
+
+  # $cache_file->close;
+  &_log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+}
+
+sub lock {
+  my ($fh) = @_;
+  flock( $fh, LOCK_EX ) or die "Cannot lock file - $!\n";
+  seek( $fh, 0, SEEK_END ) or die "Cannot seek - $!\n";
+}
+
+sub unlock {
+  my ($fh) = @_;
+  flock( $fh, LOCK_UN ) or die "Cannot unlock file - $!\n";
+}
+
+sub _stage_file {
+  join( '/', $stage_dir, md5_hex( $node_key . $partner_key . $path . shift ) );
+}
+
+sub _link_to_stage {
+  my $file       = shift;
+  my $stage_file = _stage_file($file);
+  copy( $file, $stage_file ) or die "Copy failed: $!";
+  return $stage_file;
+}
+
