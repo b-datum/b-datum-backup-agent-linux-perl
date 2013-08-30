@@ -493,9 +493,16 @@ sub start {
       next;
     }
 
-    if ( -r $destination_file
-      && ( $file->{md5} eq file_md5_hex($destination_file) )
-      && ( $file->{size} && -s ) )
+    if ( -l $destination_file && File::stat::lstat($destination_file) ) {
+      &_log_info(
+        qq{The link "$destination_file" already exists in the filesystem.});
+      next;
+    }
+
+    if ( -e $destination_file
+      && -r $destination_file
+      && ( $file->{etag} eq file_md5_hex($destination_file) )
+      && ( $file->{size} == -s $destination_file ) )
     {
       &_log_info(
         qq{The file "$destination_file" already exists in the filesystem.});
