@@ -1,5 +1,11 @@
 See http://github.com/b-datum/b-datum-linux for the latest development.
 
+Release 0.21 Thu Aug 29 23:50:26 BRT 2013
+	- First version of bdatum-restore
+	- at daemon&persistent mode, killing process when 401.
+	- Remove DateTime
+	- pairwise, stripped from List::MoreUtils source, removing a XS module.
+
 Release 0.20 Sun Aug 25 11:42:34 BRT 2013
         - New name for package, just b-datum-linux.
         - Using Getopt::Long instead of ::Descriptive, a lot of dependencies (and XS)
