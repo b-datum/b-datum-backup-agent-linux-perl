@@ -2,10 +2,10 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
   NAME       => 'bdatum-backup',
-  VERSION    => '0.20',
+  VERSION    => '0.21',
   ABSTRACT   => 'b-datum backup',
   LICENSE    => 'GPLv3',
-  EXE_FILES  => [ 'bdatum-backup', 'bdatum-config' ],
+  EXE_FILES  => [ 'bdatum-backup', 'bdatum-restore', 'bdatum-config' ],
   META_MERGE => {
     repository => {
       type => 'git',

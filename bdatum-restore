@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-my $app_name = bdatum-restore;
+my $app_name = 'bdatum-restore';
 
 $0 = "[$app_name]";
 
@@ -219,9 +219,8 @@ Usage: $app_name [options] [...]
 
   Examples:
 
-    $app_name -n 12345678901234567890 -p 12345678901234567890 --path /var
-    $app_name --proxy-server 10.0.0.1 --proxy-port 8080 --proxy-username foo --proxy-password bar
-    $app_name --persistent --daemon
+    $app_name -c ../backup.conf --basedir tmp/ --preserve-ownership
+    $app_name --profile node01 --basedir /restore/node01
 
 HELP
   exit(0);
@@ -259,6 +258,10 @@ sub options {
 
   &show_version if $opt->{version};
   &show_help    if $opt->{help};
+
+  if (!$opt->{basedir}) {
+    &_log_error( "Required option missing. (basedir)", 64 );
+  }
 
   # Defaults
   $opt->{workers}         ||= 5;
