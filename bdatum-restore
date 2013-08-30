@@ -31,7 +31,7 @@ use File::Next;
 use File::stat;
 use File::Spec;
 use File::Path;
-use File::Basename;
+use File::Basename qw(dirname);
 use File::Copy;
 use File::Slurp qw(read_file);
 use File::Temp qw/ :seekable tempdir /;
@@ -502,6 +502,10 @@ sub start {
       next;
     }
 
+    my $basedir = dirname($destination_file);
+
+    _mkdir_p($basedir) unless -d $basedir;
+
     &_log_info("Downloading to $destination_file ...");
 
     {
@@ -564,8 +568,13 @@ sub _create_symlink {
     File::Spec->canonpath( File::Spec->catfile( $opt->{basedir}, $symlink ) )
     if $opt->{basedir};
 
-  print qq{Setting symlink of "$file" to "$symlink"\n};
-  symlink $destination_file, $symlink;
+  print qq{Setting symlink of "$destination_file" to "$symlink"\n};
+
+  # $destination_file is a plainfile
+  # it needs to be removed before creating a symlink
+  unlink $destination_file if -e $destination_file;
+
+  symlink $symlink, $destination_file;
 }
 
 sub _mkdir_p {
