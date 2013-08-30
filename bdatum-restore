@@ -493,11 +493,11 @@ sub start {
       next;
     }
 
-    if ( -l $destination_file && File::stat::lstat($destination_file) ) {
-      &_log_info(
-        qq{The link "$destination_file" already exists in the filesystem.});
-      next;
-    }
+    # if ( -l $destination_file && File::stat::lstat($destination_file) ) {
+    #   &_log_info(
+    #     qq{The link "$destination_file" already exists in the filesystem.});
+    #   next;
+    # }
 
     if ( -e $destination_file
       && -r $destination_file
