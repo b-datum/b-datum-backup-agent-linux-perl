@@ -54,14 +54,32 @@ regular correspondente:
 	no_logs=(?!\.log)$
 	only_mp3=^.*?\.mp3$
 
-## Autor
+## Autores
 
 Gabriel Andrade <gabriel@b-datum.com>
+Thiago Rondon <thiago@b-datum.com>
 
-## Licensa e Copyright
+## Licença e Copyright
 
-Licensa sob a GNU GPL v3.
+Licença sob a GNU GPL v3.
 
-Copyright (c) 2013, [b-datum](http://b-datum.com/)
+Copyright (c) 2013- [b-datum](http://b-datum.com/)
 
+Nosso executável, contém os pacotes embutidos abaixo:
+
+- [JSON::PP](http://search.cpan.org/perldoc?JSON::PP) Copyright 2007-2011 by Makamaka Hannyaharamitu
+- [version](http://search.cpan.org/perldoc?version) Copyright 2004-2010 by John Peacock
+- [Digest::MD5::File](https://metacpan.org/module/Digest::MD5::File) Copyright 2005 by Daniel Muey
+- [File::Next](https://metacpan.org/module/File::Next) Copyright 2005-2012 by Andy Lester.
+- [File::Slurp](https://metacpan.org/module/File::Slurp) Copyright by Uri Guttman.
+- [File::MimeInfo](https://metacpan.org/module/File::MimeInfo) Copyright 2003, 2012 by Jaap G Karssenberg.
+- [HTTP::Date])(https://metacpan.org/module/HTTP::Date) Copyright 1995-1999, Gisle Aas
+- [HTTP::Request](https://metacpan.org/module/HTTP::Request) Copyright 1995-2004 Gisle Aas
+- [Parallel::ForkManager](https://metacpan.org/module/Parallel::ForkManager) Copyright (c) 2000-2010 Szabó, Balázs
+- [Perl6::Junction](https://metacpan.org/module/Perl6::Junction) Copyright 2005, Carl Franks.
+- [Try::Tiny](https://metacpan.org/module/Try::Tiny) Copyright (c) 2013 by Yuval Kogman.
+- [IO::Socket::SSL](https://metacpan.org/module/IO::Socket::SSL) Copyright 1999-2002 Marko Asplund, 2002-2005 Peter Behroozi, 2006-2013 Steffen Ullrich.
+- [URI](https://metacpan.org/module/URI) Copyright 1995-2009 Gisle Aas, 1995 Martijn Koster.
+- [LWP::UserAgent::Determined](https://metacpan.org/module/LWP::UserAgent::Determined) Copyright 2004, Sean M. Burke.
+- [LWP::ConnCache](https://metacpan.org/module/LWP::ConnCache) Copyright 2001 Gisle Aas.
 
