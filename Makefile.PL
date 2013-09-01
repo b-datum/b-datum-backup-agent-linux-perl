@@ -24,7 +24,7 @@ WriteMakefile(
     'Digest::MD5::File'          => 0,
     'Digest::MD5'                => 0,
     'File::Next'                 => 0,
-    'JSON'                       => 0,
+    'JSON::PP'                   => 0,
     'Getopt::Long'               => 0,
     'File::MimeInfo'             => 0,
     'Parallel::ForkManager'      => 0,
