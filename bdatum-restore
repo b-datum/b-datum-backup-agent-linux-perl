@@ -472,7 +472,6 @@ sub _write_lastrestore {
 }
 
 sub start {
-  #my %cache = _read_cache();
 
   my $start = time();
   my $files = &_get_files();
@@ -626,58 +625,6 @@ sub _make_control_file {
   my $base   = md5_hex( $node_key . $partner_key . $path );
   return "$b_datum_dir/$base.$suffix";
 }
-
-sub _read_cache {
-  #
-  # Slurp cache File
-  #
-
-  my $cache_file = &_make_control_file('cache');
-  my %cache;
-  my $cache_file_version = &_filename_cache_version($cache_file);
-
-  my $cache_version = &_read_cache_version($cache_file_version);
-  if ( version->parse($cache_version) != version->parse($VERSION) ) {
-    &_log_info("Remove cache version file: $cache_file_version");
-    &_log_info("Remove cache file: $cache_file");
-    unlink($cache_file_version);
-    unlink($cache_file);
-  }
-
-  return () unless -e $cache_file;
-
-  open( my $fh, '<:unix:encoding(UTF-8)', $cache_file )
-    or die "Cannot open $cache_file";
-
-  my $t = time;
-  my @to_delete;
-  while ( my $line = $fh->getline ) {
-    chomp($line);
-    my $attrs = [ split /,/, $line ];
-    my $file = shift @$attrs;
-    chomp($file);
-    my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
-    if ( !$stat ) {
-      if ( !$opt->{nodelete} ) {
-        push( @to_delete, $file );
-      }
-      next;
-    }
-
-    $cache{$file} = $attrs;
-  }
-  &_log_info( 'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
-
-  close($fh);
-  undef($fh);
-
-  if ( !$opt->{nodelete} && @to_delete ) {
-    _delete_files(@to_delete);
-  }
-
-  return %cache;
-}
-
 sub _filename_cache_version {
   join( '.', shift, 'version' );
 }
