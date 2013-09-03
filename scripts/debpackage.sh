@@ -17,6 +17,7 @@ if ! which debuild >/dev/null; then
 	exit
 fi
 
+rm -rf $TARGET_DIR/fatlib
 DEB_BUILD_OPTIONS="nocheck" \
 DEBFULLNAME="Thiago Rondon" \
 EMAIL="staff@b-datum.com" \
