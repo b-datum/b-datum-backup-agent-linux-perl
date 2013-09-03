@@ -472,7 +472,7 @@ sub _write_lastrestore {
 }
 
 sub start {
-  my %cache = _read_cache();
+  #my %cache = _read_cache();
 
   my $start = time();
   my $files = &_get_files();
