@@ -12,8 +12,8 @@ Para instalar no Ubuntu/Debian basta utilizar o pacote já pronto e utilizar o g
 # apt-get update
 # apt-get install gdebi-core
 # cd /tmp
-# wget https://github.com/b-datum/b-datum-linux/releases/download/0.21/b-datum-backup-perl_0.21-1_all.deb
-# gdebi b-datum-backup-perl_0.21-1_all.deb
+# wget https://github.com/b-datum/b-datum-linux/releases/download/0.22/b-datum-backup-perl_0.22-1_all.deb
+# gdebi b-datum-backup-perl_0.22-1_all.deb
 ```
 
 Para realizar a instalação em um diretório de usuário e utilizar o
