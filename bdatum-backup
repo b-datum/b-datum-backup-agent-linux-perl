@@ -55,7 +55,7 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
-use version; our $VERSION = qv('0.21'); # same line, keep backcompat with older MakeMaker
+use version; our $VERSION = qv('0.22'); # same line, keep backcompat with older MakeMaker
 
 use constant {
   BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
@@ -481,7 +481,7 @@ sub _get_files {
 }
 
 sub _validate_key {
-  my $key = shift || return 0;
+  my $key = shift || &_log_error( "Required option missing.", 64 );
   my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
   &_log_error("The key must be [a-zA-Z0-9]{20} -- $key") unless $val;
   return $val;
