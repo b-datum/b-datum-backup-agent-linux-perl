@@ -1,5 +1,13 @@
 See http://github.com/b-datum/b-datum-linux for the latest development.
 
+Release 0.22 Tue Sep  3 19:28:53 BRT 2013
+	- disable cache in bdatum-restore
+	- _validate_key return error if empty string
+	- Add fatlib directory with pure perl modules
+	- Add copyrights for modules embedded
+	- JSON:PP is pure perl for deps
+	- sending mtime metadata
+
 Release 0.21 Thu Aug 29 23:50:26 BRT 2013
 	- First version of bdatum-restore
 	- at daemon&persistent mode, killing process when 401.
