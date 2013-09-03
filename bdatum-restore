@@ -52,7 +52,7 @@ use Net::SSL ();
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
-use JSON:PP qw(encode_json decode_json);
+use JSON::PP qw(encode_json decode_json);
 
 use Getopt::Long;
 use Parallel::ForkManager;
