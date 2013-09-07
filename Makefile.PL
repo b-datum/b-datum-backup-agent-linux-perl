@@ -17,7 +17,6 @@ WriteMakefile(
   PREREQ_PM        => {
     'Crypt::SSLeay'            => 0,
     'Net::SSLeay'        => 0,
-    'LWP::Protocol::https' => 0,
   }
 );
 
