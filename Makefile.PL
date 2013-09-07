@@ -15,7 +15,7 @@ WriteMakefile(
   },
   MIN_PERL_VERSION => '5.12.2',
   PREREQ_PM        => {
-    'Crypt:SSLeay'            => 0,
+    'Crypt::SSLeay'            => 0,
     'Net::SSLeay'        => 0,
   }
 );
