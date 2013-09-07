@@ -5,7 +5,7 @@ WriteMakefile(
   VERSION    => '0.22',
   ABSTRACT   => 'b-datum backup',
   LICENSE    => 'GPLv3',
-  EXE_FILES  => [ 'bdatum-backup', 'bdatum-restore', 'bdatum-config' ],
+  EXE_FILES  => [ 'bin/bdatum-backup', 'bin/bdatum-restore', 'bdatum-config' ],
   META_MERGE => {
     repository => {
       type => 'git',
@@ -15,27 +15,8 @@ WriteMakefile(
   },
   MIN_PERL_VERSION => '5.12.2',
   PREREQ_PM        => {
-    'version'                    => 0,
-    'LWP::UserAgent::Determined' => 0,
-    'LWP::ConnCache'             => 0,
-    'IO::Socket::SSL'            => 0,
-    'URI'                        => 0,
-    'HTTP::Message'              => 0,
-    'Digest::MD5::File'          => 0,
-    'Digest::MD5'                => 0,
-    'File::Next'                 => 0,
-    'JSON::PP'                   => 0,
-    'Getopt::Long'               => 0,
-    'File::MimeInfo'             => 0,
-    'Parallel::ForkManager'      => 0,
-    'Try::Tiny'                  => 0,
-    'Time::HiRes'                => 0,
-    'Perl6::Junction'            => 0,
-    'File::Slurp'                => 0,
-    'File::Temp'                 => 0,
-    'File::Copy'                 => 0,
-    'Config::Any::INI'           => 0,
-    'Net::SSL'                   => 0,
+    'Net:SSL'            => 0,
+    'Net::SSLeay'        => 0,
   }
 );
 

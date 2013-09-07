@@ -1,5 +1,9 @@
 See http://github.com/b-datum/b-datum-linux for the latest development.
 
+Relase 0.23 Sat Sep  7 11:28:45 BRT 2013
+	- package bdatum-backup and bdatum-restore with fatpack.
+	- Just Net::SSLeay and Net::SSL as dep.
+
 Release 0.22 Tue Sep  3 19:28:53 BRT 2013
 	- disable cache in bdatum-restore
 	- _validate_key return error if empty string
