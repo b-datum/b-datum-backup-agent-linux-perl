@@ -7,7 +7,7 @@ if [ -z $VERSION ] ; then
 	exit
 fi
 
-if [ -d b-datum-linux/ ] ; then
+if [ ! -d b-datum-linux/ ] ; then
 	echo "Please, run out of workdir"
 	exit
 fi
