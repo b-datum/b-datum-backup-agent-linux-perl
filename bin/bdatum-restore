@@ -17336,144 +17336,6 @@ $fatpacked{"LWP/Protocol/GHTTP.pm"} = <<'LWP_PROTOCOL_GHTTP';
   1;
 LWP_PROTOCOL_GHTTP
 
-$fatpacked{"LWP/Protocol/Protocol/https.pm"} = <<'LWP_PROTOCOL_PROTOCOL_HTTPS';
-  package LWP::Protocol::https;
-  
-  use strict;
-  our $VERSION = "6.04";
-  
-  require LWP::Protocol::http;
-  our @ISA = qw(LWP::Protocol::http);
-  
-  sub socket_type
-  {
-      return "https";
-  }
-  
-  sub _extra_sock_opts
-  {
-      my $self = shift;
-      my %ssl_opts = %{$self->{ua}{ssl_opts} || {}};
-      if (delete $ssl_opts{verify_hostname}) {
-  	$ssl_opts{SSL_verify_mode} ||= 1;
-  	$ssl_opts{SSL_verifycn_scheme} = 'www';
-      }
-      else {
-  	$ssl_opts{SSL_verify_mode} = 0;
-      }
-      if ($ssl_opts{SSL_verify_mode}) {
-  	unless (exists $ssl_opts{SSL_ca_file} || exists $ssl_opts{SSL_ca_path}) {
-  	    eval {
-  		require Mozilla::CA;
-  	    };
-  	    if ($@) {
-  		if ($@ =! /^Can't locate Mozilla\/CA\.pm/) {
-  		    $@ = <<'EOT';
-  Can't verify SSL peers without knowing which Certificate Authorities to trust
-  
-  This problem can be fixed by either setting the PERL_LWP_SSL_CA_FILE
-  envirionment variable or by installing the Mozilla::CA module.
-  
-  To disable verification of SSL peers set the PERL_LWP_SSL_VERIFY_HOSTNAME
-  envirionment variable to 0.  If you do this you can't be sure that you
-  communicate with the expected peer.
-  EOT
-  		}
-  		die $@;
-  	    }
-  	    $ssl_opts{SSL_ca_file} = Mozilla::CA::SSL_ca_file();
-  	}
-      }
-      $self->{ssl_opts} = \%ssl_opts;
-      return (%ssl_opts, $self->SUPER::_extra_sock_opts);
-  }
-  
-  sub _check_sock
-  {
-      my($self, $req, $sock) = @_;
-      my $check = $req->header("If-SSL-Cert-Subject");
-      if (defined $check) {
-  	my $cert = $sock->get_peer_certificate ||
-  	    die "Missing SSL certificate";
-  	my $subject = $cert->subject_name;
-  	die "Bad SSL certificate subject: '$subject' !~ /$check/"
-  	    unless $subject =~ /$check/;
-  	$req->remove_header("If-SSL-Cert-Subject");  # don't pass it on
-      }
-  }
-  
-  sub _get_sock_info
-  {
-      my $self = shift;
-      $self->SUPER::_get_sock_info(@_);
-      my($res, $sock) = @_;
-      $res->header("Client-SSL-Cipher" => $sock->get_cipher);
-      my $cert = $sock->get_peer_certificate;
-      if ($cert) {
-  	$res->header("Client-SSL-Cert-Subject" => $cert->subject_name);
-  	$res->header("Client-SSL-Cert-Issuer" => $cert->issuer_name);
-      }
-      if (!$self->{ssl_opts}{SSL_verify_mode}) {
-  	$res->push_header("Client-SSL-Warning" => "Peer certificate not verified");
-      }
-      elsif (!$self->{ssl_opts}{SSL_verifycn_scheme}) {
-  	$res->push_header("Client-SSL-Warning" => "Peer hostname match with certificate not verified");
-      }
-      $res->header("Client-SSL-Socket-Class" => $Net::HTTPS::SSL_SOCKET_CLASS);
-  }
-  
-  #-----------------------------------------------------------
-  package LWP::Protocol::https::Socket;
-  
-  require Net::HTTPS;
-  our @ISA = qw(Net::HTTPS LWP::Protocol::http::SocketMethods);
-  
-  1;
-  
-  __END__
-  
-  =head1 NAME
-  
-  LWP::Protocol::https - Provide https support for LWP::UserAgent
-  
-  =head1 SYNOPSIS
-  
-    use LWP::UserAgent;
-  
-    $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 1 });
-    $res = $ua->get("https://www.example.com");
-  
-  =head1 DESCRIPTION
-  
-  The LWP::Protocol::https module provides support for using https schemed
-  URLs with LWP.  This module is a plug-in to the LWP protocol handling, so
-  you don't use it directly.  Once the module is installed LWP is able
-  to access sites using HTTP over SSL/TLS.
-  
-  If hostname verification is requested by LWP::UserAgent's C<ssl_opts>, and
-  neither C<SSL_ca_file> nor C<SSL_ca_path> is set, then C<SSL_ca_file> is
-  implied to be the one provided by Mozilla::CA.  If the Mozilla::CA module
-  isn't available SSL requests will fail.  Either install this module, set up an
-  alternative C<SSL_ca_file> or disable hostname verification.
-  
-  This module used to be bundled with the libwww-perl, but it was unbundled in
-  v6.02 in order to be able to declare its dependencies properly for the CPAN
-  tool-chain.  Applications that need https support can just declare their
-  dependency on LWP::Protocol::https and will no longer need to know what
-  underlying modules to install.
-  
-  =head1 SEE ALSO
-  
-  L<IO::Socket::SSL>, L<Crypt::SSLeay>, L<Mozilla::CA>
-  
-  =head1 COPYRIGHT
-  
-  Copyright 1997-2011 Gisle Aas.
-  
-  This library is free software; you can redistribute it and/or
-  modify it under the same terms as Perl itself.
-LWP_PROTOCOL_PROTOCOL_HTTPS
-
 $fatpacked{"LWP/Protocol/cpan.pm"} = <<'LWP_PROTOCOL_CPAN';
   package LWP::Protocol::cpan;
   
@@ -18981,6 +18843,144 @@ $fatpacked{"LWP/Protocol/http.pm"} = <<'LWP_PROTOCOL_HTTP';
   
   1;
 LWP_PROTOCOL_HTTP
+
+$fatpacked{"LWP/Protocol/https.pm"} = <<'LWP_PROTOCOL_HTTPS';
+  package LWP::Protocol::https;
+  
+  use strict;
+  our $VERSION = "6.04";
+  
+  require LWP::Protocol::http;
+  our @ISA = qw(LWP::Protocol::http);
+  
+  sub socket_type
+  {
+      return "https";
+  }
+  
+  sub _extra_sock_opts
+  {
+      my $self = shift;
+      my %ssl_opts = %{$self->{ua}{ssl_opts} || {}};
+      if (delete $ssl_opts{verify_hostname}) {
+  	$ssl_opts{SSL_verify_mode} ||= 1;
+  	$ssl_opts{SSL_verifycn_scheme} = 'www';
+      }
+      else {
+  	$ssl_opts{SSL_verify_mode} = 0;
+      }
+      if ($ssl_opts{SSL_verify_mode}) {
+  	unless (exists $ssl_opts{SSL_ca_file} || exists $ssl_opts{SSL_ca_path}) {
+  	    eval {
+  		require Mozilla::CA;
+  	    };
+  	    if ($@) {
+  		if ($@ =! /^Can't locate Mozilla\/CA\.pm/) {
+  		    $@ = <<'EOT';
+  Can't verify SSL peers without knowing which Certificate Authorities to trust
+  
+  This problem can be fixed by either setting the PERL_LWP_SSL_CA_FILE
+  envirionment variable or by installing the Mozilla::CA module.
+  
+  To disable verification of SSL peers set the PERL_LWP_SSL_VERIFY_HOSTNAME
+  envirionment variable to 0.  If you do this you can't be sure that you
+  communicate with the expected peer.
+  EOT
+  		}
+  		die $@;
+  	    }
+  	    $ssl_opts{SSL_ca_file} = Mozilla::CA::SSL_ca_file();
+  	}
+      }
+      $self->{ssl_opts} = \%ssl_opts;
+      return (%ssl_opts, $self->SUPER::_extra_sock_opts);
+  }
+  
+  sub _check_sock
+  {
+      my($self, $req, $sock) = @_;
+      my $check = $req->header("If-SSL-Cert-Subject");
+      if (defined $check) {
+  	my $cert = $sock->get_peer_certificate ||
+  	    die "Missing SSL certificate";
+  	my $subject = $cert->subject_name;
+  	die "Bad SSL certificate subject: '$subject' !~ /$check/"
+  	    unless $subject =~ /$check/;
+  	$req->remove_header("If-SSL-Cert-Subject");  # don't pass it on
+      }
+  }
+  
+  sub _get_sock_info
+  {
+      my $self = shift;
+      $self->SUPER::_get_sock_info(@_);
+      my($res, $sock) = @_;
+      $res->header("Client-SSL-Cipher" => $sock->get_cipher);
+      my $cert = $sock->get_peer_certificate;
+      if ($cert) {
+  	$res->header("Client-SSL-Cert-Subject" => $cert->subject_name);
+  	$res->header("Client-SSL-Cert-Issuer" => $cert->issuer_name);
+      }
+      if (!$self->{ssl_opts}{SSL_verify_mode}) {
+  	$res->push_header("Client-SSL-Warning" => "Peer certificate not verified");
+      }
+      elsif (!$self->{ssl_opts}{SSL_verifycn_scheme}) {
+  	$res->push_header("Client-SSL-Warning" => "Peer hostname match with certificate not verified");
+      }
+      $res->header("Client-SSL-Socket-Class" => $Net::HTTPS::SSL_SOCKET_CLASS);
+  }
+  
+  #-----------------------------------------------------------
+  package LWP::Protocol::https::Socket;
+  
+  require Net::HTTPS;
+  our @ISA = qw(Net::HTTPS LWP::Protocol::http::SocketMethods);
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  LWP::Protocol::https - Provide https support for LWP::UserAgent
+  
+  =head1 SYNOPSIS
+  
+    use LWP::UserAgent;
+  
+    $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 1 });
+    $res = $ua->get("https://www.example.com");
+  
+  =head1 DESCRIPTION
+  
+  The LWP::Protocol::https module provides support for using https schemed
+  URLs with LWP.  This module is a plug-in to the LWP protocol handling, so
+  you don't use it directly.  Once the module is installed LWP is able
+  to access sites using HTTP over SSL/TLS.
+  
+  If hostname verification is requested by LWP::UserAgent's C<ssl_opts>, and
+  neither C<SSL_ca_file> nor C<SSL_ca_path> is set, then C<SSL_ca_file> is
+  implied to be the one provided by Mozilla::CA.  If the Mozilla::CA module
+  isn't available SSL requests will fail.  Either install this module, set up an
+  alternative C<SSL_ca_file> or disable hostname verification.
+  
+  This module used to be bundled with the libwww-perl, but it was unbundled in
+  v6.02 in order to be able to declare its dependencies properly for the CPAN
+  tool-chain.  Applications that need https support can just declare their
+  dependency on LWP::Protocol::https and will no longer need to know what
+  underlying modules to install.
+  
+  =head1 SEE ALSO
+  
+  L<IO::Socket::SSL>, L<Crypt::SSLeay>, L<Mozilla::CA>
+  
+  =head1 COPYRIGHT
+  
+  Copyright 1997-2011 Gisle Aas.
+  
+  This library is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+LWP_PROTOCOL_HTTPS
 
 $fatpacked{"LWP/Protocol/loopback.pm"} = <<'LWP_PROTOCOL_LOOPBACK';
   package LWP::Protocol::loopback;
@@ -22031,6 +22031,1240 @@ $fatpacked{"LWP/UserAgent/Determined.pm"} = <<'LWP_USERAGENT_DETERMINED';
   =cut
   
 LWP_USERAGENT_DETERMINED
+
+$fatpacked{"Mozilla/CA.pm"} = <<'MOZILLA_CA';
+  package Mozilla::CA;
+  
+  use strict;
+  our $VERSION = '20130114';
+  
+  use Cwd ();
+  use File::Spec ();
+  use File::Basename qw(dirname);
+  
+  sub SSL_ca_file {
+      my $file = File::Spec->catfile(dirname(__FILE__), "CA", "cacert.pem");
+      if (!File::Spec->file_name_is_absolute($file)) {
+  	$file = File::Spec->catfile(Cwd::cwd(), $file);
+      }
+      return $file;
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Mozilla::CA - Mozilla's CA cert bundle in PEM format
+  
+  =head1 SYNOPSIS
+  
+      use IO::Socket::SSL;
+      use Mozilla::CA;
+  
+      my $host = "www.paypal.com";
+      my $client = IO::Socket::SSL->new(
+  	PeerHost => "$host:443",
+  	SSL_verify_mode => 0x02,
+  	SSL_ca_file => Mozilla::CA::SSL_ca_file(),
+      )
+  	|| die "Can't connect: $@";
+  
+      $client->verify_hostname($host, "http")
+  	|| die "hostname verification failure";
+  
+  =head1 DESCRIPTION
+  
+  Mozilla::CA provides a copy of Mozilla's bundle of Certificate Authority
+  certificates in a form that can be consumed by modules and libraries
+  based on OpenSSL.
+  
+  The module provide a single function:
+  
+  =over
+  
+  =item SSL_ca_file()
+  
+  Returns the absolute path to the Mozilla's CA cert bundle PEM file.
+  
+  =back
+  
+  =head1 SEE ALSO
+  
+  L<http://curl.haxx.se/docs/caextract.html>
+  
+  =head1 LICENSE
+  
+  For the bundled Mozilla CA PEM file the following applies:
+  
+  =over
+  
+  The contents of this file are subject to the Mozilla Public License Version
+  1.1 (the "License"); you may not use this file except in compliance with
+  the License. You may obtain a copy of the License at
+  http://www.mozilla.org/MPL/
+  
+  Software distributed under the License is distributed on an "AS IS" basis,
+  WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+  for the specific language governing rights and limitations under the
+  License.
+  
+  The Original Code is the Netscape security libraries.
+  
+  The Initial Developer of the Original Code is
+  Netscape Communications Corporation.
+  Portions created by the Initial Developer are Copyright (C) 1994-2000
+  the Initial Developer. All Rights Reserved.
+  
+  Alternatively, the contents of this file may be used under the terms of
+  either the GNU General Public License Version 2 or later (the "GPL"), or
+  the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+  in which case the provisions of the GPL or the LGPL are applicable instead
+  of those above. If you wish to allow use of your version of this file only
+  under the terms of either the GPL or the LGPL, and not to allow others to
+  use your version of this file under the terms of the MPL, indicate your
+  decision by deleting the provisions above and replace them with the notice
+  and other provisions required by the GPL or the LGPL. If you do not delete
+  the provisions above, a recipient may use your version of this file under
+  the terms of any one of the MPL, the GPL or the LGPL.
+  
+  =back
+  
+  The Mozilla::CA distribution itself is available under the same license.
+MOZILLA_CA
+
+$fatpacked{"Net/HTTP.pm"} = <<'NET_HTTP';
+  package Net::HTTP;
+  
+  use strict;
+  use vars qw($VERSION @ISA $SOCKET_CLASS);
+  
+  $VERSION = "6.06";
+  unless ($SOCKET_CLASS) {
+      eval { require IO::Socket::INET } || require IO::Socket;
+      $SOCKET_CLASS = "IO::Socket::INET";
+  }
+  require Net::HTTP::Methods;
+  require Carp;
+  
+  @ISA = ($SOCKET_CLASS, 'Net::HTTP::Methods');
+  
+  sub new {
+      my $class = shift;
+      Carp::croak("No Host option provided") unless @_;
+      $class->SUPER::new(@_);
+  }
+  
+  sub configure {
+      my($self, $cnf) = @_;
+      $self->http_configure($cnf);
+  }
+  
+  sub http_connect {
+      my($self, $cnf) = @_;
+      $self->SUPER::configure($cnf);
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Net::HTTP - Low-level HTTP connection (client)
+  
+  =head1 SYNOPSIS
+  
+   use Net::HTTP;
+   my $s = Net::HTTP->new(Host => "www.perl.com") || die $@;
+   $s->write_request(GET => "/", 'User-Agent' => "Mozilla/5.0");
+   my($code, $mess, %h) = $s->read_response_headers;
+  
+   while (1) {
+      my $buf;
+      my $n = $s->read_entity_body($buf, 1024);
+      die "read failed: $!" unless defined $n;
+      last unless $n;
+      print $buf;
+   }
+  
+  =head1 DESCRIPTION
+  
+  The C<Net::HTTP> class is a low-level HTTP client.  An instance of the
+  C<Net::HTTP> class represents a connection to an HTTP server.  The
+  HTTP protocol is described in RFC 2616.  The C<Net::HTTP> class
+  supports C<HTTP/1.0> and C<HTTP/1.1>.
+  
+  C<Net::HTTP> is a sub-class of C<IO::Socket::INET>.  You can mix the
+  methods described below with reading and writing from the socket
+  directly.  This is not necessary a good idea, unless you know what you
+  are doing.
+  
+  The following methods are provided (in addition to those of
+  C<IO::Socket::INET>):
+  
+  =over
+  
+  =item $s = Net::HTTP->new( %options )
+  
+  The C<Net::HTTP> constructor method takes the same options as
+  C<IO::Socket::INET>'s as well as these:
+  
+    Host:            Initial host attribute value
+    KeepAlive:       Initial keep_alive attribute value
+    SendTE:          Initial send_te attribute_value
+    HTTPVersion:     Initial http_version attribute value
+    PeerHTTPVersion: Initial peer_http_version attribute value
+    MaxLineLength:   Initial max_line_length attribute value
+    MaxHeaderLines:  Initial max_header_lines attribute value
+  
+  The C<Host> option is also the default for C<IO::Socket::INET>'s
+  C<PeerAddr>.  The C<PeerPort> defaults to 80 if not provided.
+  
+  The C<Listen> option provided by C<IO::Socket::INET>'s constructor
+  method is not allowed.
+  
+  If unable to connect to the given HTTP server then the constructor
+  returns C<undef> and $@ contains the reason.  After a successful
+  connect, a C<Net:HTTP> object is returned.
+  
+  =item $s->host
+  
+  Get/set the default value of the C<Host> header to send.  The $host
+  must not be set to an empty string (or C<undef>) for HTTP/1.1.
+  
+  =item $s->keep_alive
+  
+  Get/set the I<keep-alive> value.  If this value is TRUE then the
+  request will be sent with headers indicating that the server should try
+  to keep the connection open so that multiple requests can be sent.
+  
+  The actual headers set will depend on the value of the C<http_version>
+  and C<peer_http_version> attributes.
+  
+  =item $s->send_te
+  
+  Get/set the a value indicating if the request will be sent with a "TE"
+  header to indicate the transfer encodings that the server can choose to
+  use.  The list of encodings announced as accepted by this client depends
+  on availability of the following modules: C<Compress::Raw::Zlib> for
+  I<deflate>, and C<IO::Compress::Gunzip> for I<gzip>.
+  
+  =item $s->http_version
+  
+  Get/set the HTTP version number that this client should announce.
+  This value can only be set to "1.0" or "1.1".  The default is "1.1".
+  
+  =item $s->peer_http_version
+  
+  Get/set the protocol version number of our peer.  This value will
+  initially be "1.0", but will be updated by a successful
+  read_response_headers() method call.
+  
+  =item $s->max_line_length
+  
+  Get/set a limit on the length of response line and response header
+  lines.  The default is 8192.  A value of 0 means no limit.
+  
+  =item $s->max_header_length
+  
+  Get/set a limit on the number of header lines that a response can
+  have.  The default is 128.  A value of 0 means no limit.
+  
+  =item $s->format_request($method, $uri, %headers, [$content])
+  
+  Format a request message and return it as a string.  If the headers do
+  not include a C<Host> header, then a header is inserted with the value
+  of the C<host> attribute.  Headers like C<Connection> and
+  C<Keep-Alive> might also be added depending on the status of the
+  C<keep_alive> attribute.
+  
+  If $content is given (and it is non-empty), then a C<Content-Length>
+  header is automatically added unless it was already present.
+  
+  =item $s->write_request($method, $uri, %headers, [$content])
+  
+  Format and send a request message.  Arguments are the same as for
+  format_request().  Returns true if successful.
+  
+  =item $s->format_chunk( $data )
+  
+  Returns the string to be written for the given chunk of data.  
+  
+  =item $s->write_chunk($data)
+  
+  Will write a new chunk of request entity body data.  This method
+  should only be used if the C<Transfer-Encoding> header with a value of
+  C<chunked> was sent in the request.  Note, writing zero-length data is
+  a no-op.  Use the write_chunk_eof() method to signal end of entity
+  body data.
+  
+  Returns true if successful.
+  
+  =item $s->format_chunk_eof( %trailers )
+  
+  Returns the string to be written for signaling EOF when a
+  C<Transfer-Encoding> of C<chunked> is used.
+  
+  =item $s->write_chunk_eof( %trailers )
+  
+  Will write eof marker for chunked data and optional trailers.  Note
+  that trailers should not really be used unless is was signaled
+  with a C<Trailer> header.
+  
+  Returns true if successful.
+  
+  =item ($code, $mess, %headers) = $s->read_response_headers( %opts )
+  
+  Read response headers from server and return it.  The $code is the 3
+  digit HTTP status code (see L<HTTP::Status>) and $mess is the textual
+  message that came with it.  Headers are then returned as key/value
+  pairs.  Since key letter casing is not normalized and the same key can
+  even occur multiple times, assigning these values directly to a hash
+  is not wise.  Only the $code is returned if this method is called in
+  scalar context.
+  
+  As a side effect this method updates the 'peer_http_version'
+  attribute.
+  
+  Options might be passed in as key/value pairs.  There are currently
+  only two options supported; C<laxed> and C<junk_out>.
+  
+  The C<laxed> option will make read_response_headers() more forgiving
+  towards servers that have not learned how to speak HTTP properly.  The
+  C<laxed> option is a boolean flag, and is enabled by passing in a TRUE
+  value.  The C<junk_out> option can be used to capture bad header lines
+  when C<laxed> is enabled.  The value should be an array reference.
+  Bad header lines will be pushed onto the array.
+  
+  The C<laxed> option must be specified in order to communicate with
+  pre-HTTP/1.0 servers that don't describe the response outcome or the
+  data they send back with a header block.  For these servers
+  peer_http_version is set to "0.9" and this method returns (200,
+  "Assumed OK").
+  
+  The method will raise an exception (die) if the server does not speak
+  proper HTTP or if the C<max_line_length> or C<max_header_length>
+  limits are reached.  If the C<laxed> option is turned on and
+  C<max_line_length> and C<max_header_length> checks are turned off,
+  then no exception will be raised and this method will always
+  return a response code.
+  
+  =item $n = $s->read_entity_body($buf, $size);
+  
+  Reads chunks of the entity body content.  Basically the same interface
+  as for read() and sysread(), but the buffer offset argument is not
+  supported yet.  This method should only be called after a successful
+  read_response_headers() call.
+  
+  The return value will be C<undef> on read errors, 0 on EOF, -1 if no data
+  could be returned this time, otherwise the number of bytes assigned
+  to $buf.  The $buf is set to "" when the return value is -1.
+  
+  You normally want to retry this call if this function returns either
+  -1 or C<undef> with C<$!> as EINTR or EAGAIN (see L<Errno>).  EINTR
+  can happen if the application catches signals and EAGAIN can happen if
+  you made the socket non-blocking.
+  
+  This method will raise exceptions (die) if the server does not speak
+  proper HTTP.  This can only happen when reading chunked data.
+  
+  =item %headers = $s->get_trailers
+  
+  After read_entity_body() has returned 0 to indicate end of the entity
+  body, you might call this method to pick up any trailers.
+  
+  =item $s->_rbuf
+  
+  Get/set the read buffer content.  The read_response_headers() and
+  read_entity_body() methods use an internal buffer which they will look
+  for data before they actually sysread more from the socket itself.  If
+  they read too much, the remaining data will be left in this buffer.
+  
+  =item $s->_rbuf_length
+  
+  Returns the number of bytes in the read buffer.  This should always be
+  the same as:
+  
+      length($s->_rbuf)
+  
+  but might be more efficient.
+  
+  =back
+  
+  =head1 SUBCLASSING
+  
+  The read_response_headers() and read_entity_body() will invoke the
+  sysread() method when they need more data.  Subclasses might want to
+  override this method to control how reading takes place.
+  
+  The object itself is a glob.  Subclasses should avoid using hash key
+  names prefixed with C<http_> and C<io_>.
+  
+  =head1 SEE ALSO
+  
+  L<LWP>, L<IO::Socket::INET>, L<Net::HTTP::NB>
+  
+  =head1 COPYRIGHT
+  
+  Copyright 2001-2003 Gisle Aas.
+  
+  This library is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+  
+  =cut
+NET_HTTP
+
+$fatpacked{"Net/HTTP/Methods.pm"} = <<'NET_HTTP_METHODS';
+  package Net::HTTP::Methods;
+  
+  require 5.005;  # 4-arg substr
+  
+  use strict;
+  use vars qw($VERSION);
+  
+  $VERSION = "6.06";
+  
+  my $CRLF = "\015\012";   # "\r\n" is not portable
+  
+  *_bytes = defined(&utf8::downgrade) ?
+      sub {
+          unless (utf8::downgrade($_[0], 1)) {
+              require Carp;
+              Carp::croak("Wide character in HTTP request (bytes required)");
+          }
+          return $_[0];
+      }
+      :
+      sub {
+          return $_[0];
+      };
+  
+  
+  sub new {
+      my $class = shift;
+      unshift(@_, "Host") if @_ == 1;
+      my %cnf = @_;
+      require Symbol;
+      my $self = bless Symbol::gensym(), $class;
+      return $self->http_configure(\%cnf);
+  }
+  
+  sub http_configure {
+      my($self, $cnf) = @_;
+  
+      die "Listen option not allowed" if $cnf->{Listen};
+      my $explict_host = (exists $cnf->{Host});
+      my $host = delete $cnf->{Host};
+      my $peer = $cnf->{PeerAddr} || $cnf->{PeerHost};
+      if (!$peer) {
+  	die "No Host option provided" unless $host;
+  	$cnf->{PeerAddr} = $peer = $host;
+      }
+  
+      if ($peer =~ s,:(\d+)$,,) {
+  	$cnf->{PeerPort} = int($1);  # always override
+      }
+      if (!$cnf->{PeerPort}) {
+  	$cnf->{PeerPort} = $self->http_default_port;
+      }
+  
+      if (!$explict_host) {
+  	$host = $peer;
+  	$host =~ s/:.*//;
+      }
+      if ($host && $host !~ /:/) {
+  	my $p = $cnf->{PeerPort};
+  	$host .= ":$p" if $p != $self->http_default_port;
+      }
+  
+      $cnf->{Proto} = 'tcp';
+  
+      my $keep_alive = delete $cnf->{KeepAlive};
+      my $http_version = delete $cnf->{HTTPVersion};
+      $http_version = "1.1" unless defined $http_version;
+      my $peer_http_version = delete $cnf->{PeerHTTPVersion};
+      $peer_http_version = "1.0" unless defined $peer_http_version;
+      my $send_te = delete $cnf->{SendTE};
+      my $max_line_length = delete $cnf->{MaxLineLength};
+      $max_line_length = 8*1024 unless defined $max_line_length;
+      my $max_header_lines = delete $cnf->{MaxHeaderLines};
+      $max_header_lines = 128 unless defined $max_header_lines;
+  
+      return undef unless $self->http_connect($cnf);
+  
+      $self->host($host);
+      $self->keep_alive($keep_alive);
+      $self->send_te($send_te);
+      $self->http_version($http_version);
+      $self->peer_http_version($peer_http_version);
+      $self->max_line_length($max_line_length);
+      $self->max_header_lines($max_header_lines);
+  
+      ${*$self}{'http_buf'} = "";
+  
+      return $self;
+  }
+  
+  sub http_default_port {
+      80;
+  }
+  
+  # set up property accessors
+  for my $method (qw(host keep_alive send_te max_line_length max_header_lines peer_http_version)) {
+      my $prop_name = "http_" . $method;
+      no strict 'refs';
+      *$method = sub {
+  	my $self = shift;
+  	my $old = ${*$self}{$prop_name};
+  	${*$self}{$prop_name} = shift if @_;
+  	return $old;
+      };
+  }
+  
+  # we want this one to be a bit smarter
+  sub http_version {
+      my $self = shift;
+      my $old = ${*$self}{'http_version'};
+      if (@_) {
+  	my $v = shift;
+  	$v = "1.0" if $v eq "1";  # float
+  	unless ($v eq "1.0" or $v eq "1.1") {
+  	    require Carp;
+  	    Carp::croak("Unsupported HTTP version '$v'");
+  	}
+  	${*$self}{'http_version'} = $v;
+      }
+      $old;
+  }
+  
+  sub format_request {
+      my $self = shift;
+      my $method = shift;
+      my $uri = shift;
+  
+      my $content = (@_ % 2) ? pop : "";
+  
+      for ($method, $uri) {
+  	require Carp;
+  	Carp::croak("Bad method or uri") if /\s/ || !length;
+      }
+  
+      push(@{${*$self}{'http_request_method'}}, $method);
+      my $ver = ${*$self}{'http_version'};
+      my $peer_ver = ${*$self}{'http_peer_http_version'} || "1.0";
+  
+      my @h;
+      my @connection;
+      my %given = (host => 0, "content-length" => 0, "te" => 0);
+      while (@_) {
+  	my($k, $v) = splice(@_, 0, 2);
+  	my $lc_k = lc($k);
+  	if ($lc_k eq "connection") {
+  	    $v =~ s/^\s+//;
+  	    $v =~ s/\s+$//;
+  	    push(@connection, split(/\s*,\s*/, $v));
+  	    next;
+  	}
+  	if (exists $given{$lc_k}) {
+  	    $given{$lc_k}++;
+  	}
+  	push(@h, "$k: $v");
+      }
+  
+      if (length($content) && !$given{'content-length'}) {
+  	push(@h, "Content-Length: " . length($content));
+      }
+  
+      my @h2;
+      if ($given{te}) {
+  	push(@connection, "TE") unless grep lc($_) eq "te", @connection;
+      }
+      elsif ($self->send_te && gunzip_ok()) {
+  	# gzip is less wanted since the IO::Uncompress::Gunzip interface for
+  	# it does not really allow chunked decoding to take place easily.
+  	push(@h2, "TE: deflate,gzip;q=0.3");
+  	push(@connection, "TE");
+      }
+  
+      unless (grep lc($_) eq "close", @connection) {
+  	if ($self->keep_alive) {
+  	    if ($peer_ver eq "1.0") {
+  		# from looking at Netscape's headers
+  		push(@h2, "Keep-Alive: 300");
+  		unshift(@connection, "Keep-Alive");
+  	    }
+  	}
+  	else {
+  	    push(@connection, "close") if $ver ge "1.1";
+  	}
+      }
+      push(@h2, "Connection: " . join(", ", @connection)) if @connection;
+      unless ($given{host}) {
+  	my $h = ${*$self}{'http_host'};
+  	push(@h2, "Host: $h") if $h;
+      }
+  
+      return _bytes(join($CRLF, "$method $uri HTTP/$ver", @h2, @h, "", $content));
+  }
+  
+  
+  sub write_request {
+      my $self = shift;
+      $self->print($self->format_request(@_));
+  }
+  
+  sub format_chunk {
+      my $self = shift;
+      return $_[0] unless defined($_[0]) && length($_[0]);
+      return _bytes(sprintf("%x", length($_[0])) . $CRLF . $_[0] . $CRLF);
+  }
+  
+  sub write_chunk {
+      my $self = shift;
+      return 1 unless defined($_[0]) && length($_[0]);
+      $self->print(_bytes(sprintf("%x", length($_[0])) . $CRLF . $_[0] . $CRLF));
+  }
+  
+  sub format_chunk_eof {
+      my $self = shift;
+      my @h;
+      while (@_) {
+  	push(@h, sprintf "%s: %s$CRLF", splice(@_, 0, 2));
+      }
+      return _bytes(join("", "0$CRLF", @h, $CRLF));
+  }
+  
+  sub write_chunk_eof {
+      my $self = shift;
+      $self->print($self->format_chunk_eof(@_));
+  }
+  
+  
+  sub my_read {
+      die if @_ > 3;
+      my $self = shift;
+      my $len = $_[1];
+      for (${*$self}{'http_buf'}) {
+  	if (length) {
+  	    $_[0] = substr($_, 0, $len, "");
+  	    return length($_[0]);
+  	}
+  	else {
+  	    die "read timeout" unless $self->can_read;
+  	    return $self->sysread($_[0], $len);
+  	}
+      }
+  }
+  
+  
+  sub my_readline {
+      my $self = shift;
+      my $what = shift;
+      for (${*$self}{'http_buf'}) {
+  	my $max_line_length = ${*$self}{'http_max_line_length'};
+  	my $pos;
+  	while (1) {
+  	    # find line ending
+  	    $pos = index($_, "\012");
+  	    last if $pos >= 0;
+  	    die "$what line too long (limit is $max_line_length)"
+  		if $max_line_length && length($_) > $max_line_length;
+  
+  	    # need to read more data to find a line ending
+            READ:
+              {
+                  die "read timeout" unless $self->can_read;
+                  my $n = $self->sysread($_, 1024, length);
+                  unless (defined $n) {
+                      redo READ if $!{EINTR} || $!{EAGAIN};
+                      # if we have already accumulated some data let's at least
+                      # return that as a line
+                      die "$what read failed: $!" unless length;
+                  }
+                  unless ($n) {
+                      return undef unless length;
+                      return substr($_, 0, length, "");
+                  }
+              }
+  	}
+  	die "$what line too long ($pos; limit is $max_line_length)"
+  	    if $max_line_length && $pos > $max_line_length;
+  
+  	my $line = substr($_, 0, $pos+1, "");
+  	$line =~ s/(\015?\012)\z// || die "Assert";
+  	return wantarray ? ($line, $1) : $line;
+      }
+  }
+  
+  
+  sub can_read {
+      my $self = shift;
+      return 1 unless defined(fileno($self));
+      return 1 if $self->isa('IO::Socket::SSL') && $self->pending;
+  
+      # With no timeout, wait forever.  An explict timeout of 0 can be
+      # used to just check if the socket is readable without waiting.
+      my $timeout = @_ ? shift : (${*$self}{io_socket_timeout} || undef);
+  
+      my $fbits = '';
+      vec($fbits, fileno($self), 1) = 1;
+    SELECT:
+      {
+          my $before;
+          $before = time if $timeout;
+          my $nfound = select($fbits, undef, undef, $timeout);
+          if ($nfound < 0) {
+              if ($!{EINTR} || $!{EAGAIN}) {
+                  # don't really think EAGAIN can happen here
+                  if ($timeout) {
+                      $timeout -= time - $before;
+                      $timeout = 0 if $timeout < 0;
+                  }
+                  redo SELECT;
+              }
+              die "select failed: $!";
+          }
+          return $nfound > 0;
+      }
+  }
+  
+  
+  sub _rbuf {
+      my $self = shift;
+      if (@_) {
+  	for (${*$self}{'http_buf'}) {
+  	    my $old;
+  	    $old = $_ if defined wantarray;
+  	    $_ = shift;
+  	    return $old;
+  	}
+      }
+      else {
+  	return ${*$self}{'http_buf'};
+      }
+  }
+  
+  sub _rbuf_length {
+      my $self = shift;
+      return length ${*$self}{'http_buf'};
+  }
+  
+  
+  sub _read_header_lines {
+      my $self = shift;
+      my $junk_out = shift;
+  
+      my @headers;
+      my $line_count = 0;
+      my $max_header_lines = ${*$self}{'http_max_header_lines'};
+      while (my $line = my_readline($self, 'Header')) {
+  	if ($line =~ /^(\S+?)\s*:\s*(.*)/s) {
+  	    push(@headers, $1, $2);
+  	}
+  	elsif (@headers && $line =~ s/^\s+//) {
+  	    $headers[-1] .= " " . $line;
+  	}
+  	elsif ($junk_out) {
+  	    push(@$junk_out, $line);
+  	}
+  	else {
+  	    die "Bad header: '$line'\n";
+  	}
+  	if ($max_header_lines) {
+  	    $line_count++;
+  	    if ($line_count >= $max_header_lines) {
+  		die "Too many header lines (limit is $max_header_lines)";
+  	    }
+  	}
+      }
+      return @headers;
+  }
+  
+  
+  sub read_response_headers {
+      my($self, %opt) = @_;
+      my $laxed = $opt{laxed};
+  
+      my($status, $eol) = my_readline($self, 'Status');
+      unless (defined $status) {
+  	die "Server closed connection without sending any data back";
+      }
+  
+      my($peer_ver, $code, $message) = split(/\s+/, $status, 3);
+      if (!$peer_ver || $peer_ver !~ s,^HTTP/,, || $code !~ /^[1-5]\d\d$/) {
+  	die "Bad response status line: '$status'" unless $laxed;
+  	# assume HTTP/0.9
+  	${*$self}{'http_peer_http_version'} = "0.9";
+  	${*$self}{'http_status'} = "200";
+  	substr(${*$self}{'http_buf'}, 0, 0) = $status . ($eol || "");
+  	return 200 unless wantarray;
+  	return (200, "Assumed OK");
+      };
+  
+      ${*$self}{'http_peer_http_version'} = $peer_ver;
+      ${*$self}{'http_status'} = $code;
+  
+      my $junk_out;
+      if ($laxed) {
+  	$junk_out = $opt{junk_out} || [];
+      }
+      my @headers = $self->_read_header_lines($junk_out);
+  
+      # pick out headers that read_entity_body might need
+      my @te;
+      my $content_length;
+      for (my $i = 0; $i < @headers; $i += 2) {
+  	my $h = lc($headers[$i]);
+  	if ($h eq 'transfer-encoding') {
+  	    my $te = $headers[$i+1];
+  	    $te =~ s/^\s+//;
+  	    $te =~ s/\s+$//;
+  	    push(@te, $te) if length($te);
+  	}
+  	elsif ($h eq 'content-length') {
+  	    # ignore bogus and overflow values
+  	    if ($headers[$i+1] =~ /^\s*(\d{1,15})(?:\s|$)/) {
+  		$content_length = $1;
+  	    }
+  	}
+      }
+      ${*$self}{'http_te'} = join(",", @te);
+      ${*$self}{'http_content_length'} = $content_length;
+      ${*$self}{'http_first_body'}++;
+      delete ${*$self}{'http_trailers'};
+      return $code unless wantarray;
+      return ($code, $message, @headers);
+  }
+  
+  
+  sub read_entity_body {
+      my $self = shift;
+      my $buf_ref = \$_[0];
+      my $size = $_[1];
+      die "Offset not supported yet" if $_[2];
+  
+      my $chunked;
+      my $bytes;
+  
+      if (${*$self}{'http_first_body'}) {
+  	${*$self}{'http_first_body'} = 0;
+  	delete ${*$self}{'http_chunked'};
+  	delete ${*$self}{'http_bytes'};
+  	my $method = shift(@{${*$self}{'http_request_method'}});
+  	my $status = ${*$self}{'http_status'};
+  	if ($method eq "HEAD") {
+  	    # this response is always empty regardless of other headers
+  	    $bytes = 0;
+  	}
+  	elsif (my $te = ${*$self}{'http_te'}) {
+  	    my @te = split(/\s*,\s*/, lc($te));
+  	    die "Chunked must be last Transfer-Encoding '$te'"
+  		unless pop(@te) eq "chunked";
+  	    pop(@te) while @te && $te[-1] eq "chunked";  # ignore repeated chunked spec
+  
+  	    for (@te) {
+  		if ($_ eq "deflate" && inflate_ok()) {
+  		    #require Compress::Raw::Zlib;
+  		    my ($i, $status) = Compress::Raw::Zlib::Inflate->new();
+  		    die "Can't make inflator: $status" unless $i;
+  		    $_ = sub { my $out; $i->inflate($_[0], \$out); $out }
+  		}
+  		elsif ($_ eq "gzip" && gunzip_ok()) {
+  		    #require IO::Uncompress::Gunzip;
+  		    my @buf;
+  		    $_ = sub {
+  			push(@buf, $_[0]);
+  			return "" unless $_[1];
+  			my $input = join("", @buf);
+  			my $output;
+  			IO::Uncompress::Gunzip::gunzip(\$input, \$output, Transparent => 0)
+  			    or die "Can't gunzip content: $IO::Uncompress::Gunzip::GunzipError";
+  			return \$output;
+  		    };
+  		}
+  		elsif ($_ eq "identity") {
+  		    $_ = sub { $_[0] };
+  		}
+  		else {
+  		    die "Can't handle transfer encoding '$te'";
+  		}
+  	    }
+  
+  	    @te = reverse(@te);
+  
+  	    ${*$self}{'http_te2'} = @te ? \@te : "";
+  	    $chunked = -1;
+  	}
+  	elsif (defined(my $content_length = ${*$self}{'http_content_length'})) {
+  	    $bytes = $content_length;
+  	}
+          elsif ($status =~ /^(?:1|[23]04)/) {
+              # RFC 2616 says that these responses should always be empty
+              # but that does not appear to be true in practice [RT#17907]
+              $bytes = 0;
+          }
+  	else {
+  	    # XXX Multi-Part types are self delimiting, but RFC 2616 says we
+  	    # only has to deal with 'multipart/byteranges'
+  
+  	    # Read until EOF
+  	}
+      }
+      else {
+  	$chunked = ${*$self}{'http_chunked'};
+  	$bytes   = ${*$self}{'http_bytes'};
+      }
+  
+      if (defined $chunked) {
+  	# The state encoded in $chunked is:
+  	#   $chunked == 0:   read CRLF after chunk, then chunk header
+          #   $chunked == -1:  read chunk header
+  	#   $chunked > 0:    bytes left in current chunk to read
+  
+  	if ($chunked <= 0) {
+  	    my $line = my_readline($self, 'Entity body');
+  	    if ($chunked == 0) {
+  		die "Missing newline after chunk data: '$line'"
+  		    if !defined($line) || $line ne "";
+  		$line = my_readline($self, 'Entity body');
+  	    }
+  	    die "EOF when chunk header expected" unless defined($line);
+  	    my $chunk_len = $line;
+  	    $chunk_len =~ s/;.*//;  # ignore potential chunk parameters
+  	    unless ($chunk_len =~ /^([\da-fA-F]+)\s*$/) {
+  		die "Bad chunk-size in HTTP response: $line";
+  	    }
+  	    $chunked = hex($1);
+  	    ${*$self}{'http_chunked'} = $chunked;
+  	    if ($chunked == 0) {
+  		${*$self}{'http_trailers'} = [$self->_read_header_lines];
+  		$$buf_ref = "";
+  
+  		my $n = 0;
+  		if (my $transforms = delete ${*$self}{'http_te2'}) {
+  		    for (@$transforms) {
+  			$$buf_ref = &$_($$buf_ref, 1);
+  		    }
+  		    $n = length($$buf_ref);
+  		}
+  
+  		# in case somebody tries to read more, make sure we continue
+  		# to return EOF
+  		delete ${*$self}{'http_chunked'};
+  		${*$self}{'http_bytes'} = 0;
+  
+  		return $n;
+  	    }
+  	}
+  
+  	my $n = $chunked;
+  	$n = $size if $size && $size < $n;
+  	$n = my_read($self, $$buf_ref, $n);
+  	return undef unless defined $n;
+  
+  	${*$self}{'http_chunked'} = $chunked - $n;
+  
+  	if ($n > 0) {
+  	    if (my $transforms = ${*$self}{'http_te2'}) {
+  		for (@$transforms) {
+  		    $$buf_ref = &$_($$buf_ref, 0);
+  		}
+  		$n = length($$buf_ref);
+  		$n = -1 if $n == 0;
+  	    }
+  	}
+  	return $n;
+      }
+      elsif (defined $bytes) {
+  	unless ($bytes) {
+  	    $$buf_ref = "";
+  	    return 0;
+  	}
+  	my $n = $bytes;
+  	$n = $size if $size && $size < $n;
+  	$n = my_read($self, $$buf_ref, $n);
+  	${*$self}{'http_bytes'} = defined $n ? $bytes - $n : $bytes;
+  	return $n;
+      }
+      else {
+  	# read until eof
+  	$size ||= 8*1024;
+  	return my_read($self, $$buf_ref, $size);
+      }
+  }
+  
+  sub get_trailers {
+      my $self = shift;
+      @{${*$self}{'http_trailers'} || []};
+  }
+  
+  BEGIN {
+  my $gunzip_ok;
+  my $inflate_ok;
+  
+  sub gunzip_ok {
+      return $gunzip_ok if defined $gunzip_ok;
+  
+      # Try to load IO::Uncompress::Gunzip.
+      local $@;
+      local $SIG{__DIE__};
+      $gunzip_ok = 0;
+  
+      eval {
+  	require IO::Uncompress::Gunzip;
+  	$gunzip_ok++;
+      };
+  
+      return $gunzip_ok;
+  }
+  
+  sub inflate_ok {
+      return $inflate_ok if defined $inflate_ok;
+  
+      # Try to load Compress::Raw::Zlib.
+      local $@;
+      local $SIG{__DIE__};
+      $inflate_ok = 0;
+  
+      eval {
+  	require Compress::Raw::Zlib;
+  	$inflate_ok++;
+      };
+  
+      return $inflate_ok;
+  }
+  
+  } # BEGIN
+  
+  1;
+NET_HTTP_METHODS
+
+$fatpacked{"Net/HTTP/NB.pm"} = <<'NET_HTTP_NB';
+  package Net::HTTP::NB;
+  
+  use strict;
+  use vars qw($VERSION @ISA);
+  
+  $VERSION = "6.04";
+  
+  require Net::HTTP;
+  @ISA=qw(Net::HTTP);
+  
+  sub can_read {
+      return 1;
+  }
+  
+  sub sysread {
+      my $self = $_[0];
+      if (${*$self}{'httpnb_read_count'}++) {
+  	${*$self}{'http_buf'} = ${*$self}{'httpnb_save'};
+  	die "Multi-read\n";
+      }
+      my $buf;
+      my $offset = $_[3] || 0;
+      my $n = sysread($self, $_[1], $_[2], $offset);
+      ${*$self}{'httpnb_save'} .= substr($_[1], $offset);
+      return $n;
+  }
+  
+  sub read_response_headers {
+      my $self = shift;
+      ${*$self}{'httpnb_read_count'} = 0;
+      ${*$self}{'httpnb_save'} = ${*$self}{'http_buf'};
+      my @h = eval { $self->SUPER::read_response_headers(@_) };
+      if ($@) {
+  	return if $@ eq "Multi-read\n";
+  	die;
+      }
+      return @h;
+  }
+  
+  sub read_entity_body {
+      my $self = shift;
+      ${*$self}{'httpnb_read_count'} = 0;
+      ${*$self}{'httpnb_save'} = ${*$self}{'http_buf'};
+      # XXX I'm not so sure this does the correct thing in case of
+      # transfer-encoding tranforms
+      my $n = eval { $self->SUPER::read_entity_body(@_); };
+      if ($@) {
+  	$_[0] = "";
+  	return -1;
+      }
+      return $n;
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  Net::HTTP::NB - Non-blocking HTTP client
+  
+  =head1 SYNOPSIS
+  
+   use Net::HTTP::NB;
+   my $s = Net::HTTP::NB->new(Host => "www.perl.com") || die $@;
+   $s->write_request(GET => "/");
+  
+   use IO::Select;
+   my $sel = IO::Select->new($s);
+  
+   READ_HEADER: {
+      die "Header timeout" unless $sel->can_read(10);
+      my($code, $mess, %h) = $s->read_response_headers;
+      redo READ_HEADER unless $code;
+   }
+  
+   while (1) {
+      die "Body timeout" unless $sel->can_read(10);
+      my $buf;
+      my $n = $s->read_entity_body($buf, 1024);
+      last unless $n;
+      print $buf;
+   }
+  
+  =head1 DESCRIPTION
+  
+  Same interface as C<Net::HTTP> but it will never try multiple reads
+  when the read_response_headers() or read_entity_body() methods are
+  invoked.  This make it possible to multiplex multiple Net::HTTP::NB
+  using select without risk blocking.
+  
+  If read_response_headers() did not see enough data to complete the
+  headers an empty list is returned.
+  
+  If read_entity_body() did not see new entity data in its read
+  the value -1 is returned.
+  
+  =head1 SEE ALSO
+  
+  L<Net::HTTP>
+  
+  =head1 COPYRIGHT
+  
+  Copyright 2001 Gisle Aas.
+  
+  This library is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+  
+  =cut
+NET_HTTP_NB
+
+$fatpacked{"Net/HTTPS.pm"} = <<'NET_HTTPS';
+  package Net::HTTPS;
+  
+  use strict;
+  use vars qw($VERSION $SSL_SOCKET_CLASS @ISA);
+  
+  $VERSION = "6.04";
+  
+  # Figure out which SSL implementation to use
+  if ($SSL_SOCKET_CLASS) {
+      # somebody already set it
+  }
+  elsif ($SSL_SOCKET_CLASS = $ENV{PERL_NET_HTTPS_SSL_SOCKET_CLASS}) {
+      unless ($SSL_SOCKET_CLASS =~ /^(IO::Socket::SSL|Net::SSL)\z/) {
+  	die "Bad socket class [$SSL_SOCKET_CLASS]";
+      }
+      eval "require $SSL_SOCKET_CLASS";
+      die $@ if $@;
+  }
+  elsif ($IO::Socket::SSL::VERSION) {
+      $SSL_SOCKET_CLASS = "IO::Socket::SSL"; # it was already loaded
+  }
+  elsif ($Net::SSL::VERSION) {
+      $SSL_SOCKET_CLASS = "Net::SSL";
+  }
+  else {
+      eval { require IO::Socket::SSL; };
+      if ($@) {
+  	my $old_errsv = $@;
+  	eval {
+  	    require Net::SSL;  # from Crypt-SSLeay
+  	};
+  	if ($@) {
+  	    $old_errsv =~ s/\s\(\@INC contains:.*\)/)/g;
+  	    die $old_errsv . $@;
+  	}
+  	$SSL_SOCKET_CLASS = "Net::SSL";
+      }
+      else {
+  	$SSL_SOCKET_CLASS = "IO::Socket::SSL";
+      }
+  }
+  
+  require Net::HTTP::Methods;
+  
+  @ISA=($SSL_SOCKET_CLASS, 'Net::HTTP::Methods');
+  
+  sub configure {
+      my($self, $cnf) = @_;
+      $self->http_configure($cnf);
+  }
+  
+  sub http_connect {
+      my($self, $cnf) = @_;
+      if ($self->isa("Net::SSL")) {
+  	if ($cnf->{SSL_verify_mode}) {
+  	    if (my $f = $cnf->{SSL_ca_file}) {
+  		$ENV{HTTPS_CA_FILE} = $f;
+  	    }
+  	    if (my $f = $cnf->{SSL_ca_path}) {
+  		$ENV{HTTPS_CA_DIR} = $f;
+  	    }
+  	}
+  	if ($cnf->{SSL_verifycn_scheme}) {
+  	    $@ = "Net::SSL from Crypt-SSLeay can't verify hostnames; either install IO::Socket::SSL or turn off verification by setting the PERL_LWP_SSL_VERIFY_HOSTNAME environment variable to 0";
+  	    return undef;
+  	}
+      }
+      $self->SUPER::configure($cnf);
+  }
+  
+  sub http_default_port {
+      443;
+  }
+  
+  if ($SSL_SOCKET_CLASS eq "Net::SSL") {
+      # The underlying SSLeay classes fails to work if the socket is
+      # placed in non-blocking mode.  This override of the blocking
+      # method makes sure it stays the way it was created.
+      *blocking = sub { };
+  }
+  
+  1;
+  
+  =head1 NAME
+  
+  Net::HTTPS - Low-level HTTP over SSL/TLS connection (client)
+  
+  =head1 DESCRIPTION
+  
+  The C<Net::HTTPS> is a low-level HTTP over SSL/TLS client.  The interface is the same
+  as the interface for C<Net::HTTP>, but the constructor method take additional parameters
+  as accepted by L<IO::Socket::SSL>.  The C<Net::HTTPS> object isa C<IO::Socket::SSL>
+  too, which make it inherit additional methods from that base class.
+  
+  For historical reasons this module also supports using C<Net::SSL> (from the
+  Crypt-SSLeay distribution) as its SSL driver and base class.  This base is
+  automatically selected if available and C<IO::Socket::SSL> isn't.  You might
+  also force which implementation to use by setting $Net::HTTPS::SSL_SOCKET_CLASS
+  before loading this module.  If not set this variable is initialized from the
+  C<PERL_NET_HTTPS_SSL_SOCKET_CLASS> environment variable.
+  
+  =head1 ENVIRONMENT
+  
+  You might set the C<PERL_NET_HTTPS_SSL_SOCKET_CLASS> environment variable to the name
+  of the base SSL implementation (and Net::HTTPS base class) to use.  The default
+  is C<IO::Socket::SSL>.  Currently the only other supported value is C<Net::SSL>.
+  
+  =head1 SEE ALSO
+  
+  L<Net::HTTP>, L<IO::Socket::SSL>
+NET_HTTPS
 
 $fatpacked{"Parallel/ForkManager.pm"} = <<'PARALLEL_FORKMANAGER';
   =head1 NAME
