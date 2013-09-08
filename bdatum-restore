@@ -48,7 +48,6 @@ use Encode;
 use LWP::UserAgent::Determined;
 use LWP::ConnCache;
 use IO::Socket::SSL;
-use Net::SSL ();
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
@@ -357,7 +356,6 @@ sub restore {
     $ENV{HTTP_PROXY}                   = $proxy;
     $ENV{HTTP_PROXY_USERNAME}          = $username;
     $ENV{HTTP_PROXY_PASSWORD}          = $password;
-    $Net::HTTPS::SSL_SOCKET_CLASS      = "Net::SSL";
     $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
     $ua->env_proxy(1);
 

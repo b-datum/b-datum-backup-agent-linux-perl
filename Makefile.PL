@@ -15,7 +15,6 @@ WriteMakefile(
   },
   MIN_PERL_VERSION => '5.12.2',
   PREREQ_PM        => {
-    'Crypt::SSLeay'            => 0,
     'Net::SSLeay'        => 0,
     'IO::Socket::SSL'    => 0,
   }
