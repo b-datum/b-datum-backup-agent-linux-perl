@@ -26,6 +26,7 @@ mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
 cp b-datum-linux/b-datum-linux.spec ~/rpmbuild/SPECS
 cp -rfpad b-datum-linux ~/rpmbuild/SOURCES/b-datum-linux-$VERSION
+(cd ~/rpmbuild/SOURCES/b-datum-linux-$VERSION && perl Makefile.PL)
 (cd ~/rpmbuild/SOURCES/ && tar cvfzp b-datum-linux-$VERSION.tar.gz b-datum-linux-$VERSION)
 (cd ~/rpmbuild/SPECS && rpmbuild -ba b-datum-linux.spec)
 
