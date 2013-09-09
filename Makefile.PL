@@ -13,7 +13,7 @@ WriteMakefile(
       web  => 'https://github.com/b-datum/b-datum-linux'
     }
   },
-  MIN_PERL_VERSION => '5.12.2',
+  MIN_PERL_VERSION => '5.010',
   PREREQ_PM        => {
     'Net::SSLeay'        => 0,
     'IO::Socket::SSL'    => 0,
