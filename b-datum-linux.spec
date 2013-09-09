@@ -12,6 +12,7 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildRequires: perl-IO-Socket-SSL, perl-Net-SSLeay
 Requires: dialog, perl-IO-Socket-SSL, perl-Net-SSLeay
 AutoReqProv: no
+BuildArch: noarch
 
 %description
 bdatum-linux backup and restore
