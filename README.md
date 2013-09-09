@@ -16,12 +16,17 @@ Para instalar no Ubuntu/Debian basta utilizar o pacote já pronto e utilizar o g
 # gdebi b-datum-backup-perl_0.23-1_all.deb
 ```
 
-Para realizar a instalação em um diretório de usuário e utilizar o
-perlbrew em qualquer distribuição, basta:
+Para instalar no CentOS/Fedora/RedHat, basta baixar o pacote:
 
-```
-$ curl -X GET https://raw.github.com/b-datum/b-datum-linux/master/install.sh | bash
-```
+# cd /tmp
+# wget https://github.com/b-datum/b-datum-linux/releases/download/0.23/b-datum-linux-0.23-1.el6.x86_64.rpm
+# rpm -Uvh b-datum-linux-0.23-1.el6.x86_64.rpm
+
+Você também pode baixar os fontes, e realizar a instalação manual e executar o Makefile.
+
+# perl Makefile.PL 
+# make
+# make install
 
 ## Configuração
 
