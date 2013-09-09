@@ -33,10 +33,9 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-/usr/local/bin/bdatum-backup
-/usr/local/bin/bdatum-config
-/usr/local/bin/bdatum-restore
-/usr/
+/usr/bin/bdatum-backup
+/usr/bin/bdatum-config
+/usr/bin/bdatum-restore
 
 %doc
 
