@@ -1,4 +1,4 @@
-use ExtUtils::MakeMaker;
+use ExtUtils::MakeMaker 6.76;
 
 WriteMakefile(
   NAME       => 'bdatum-backup',
