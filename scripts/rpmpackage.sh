@@ -28,5 +28,5 @@ cp b-datum-linux/b-datum-linux.spec ~/rpmbuild/SPECS
 cp -rfpad b-datum-linux ~/rpmbuild/SOURCES/b-datum-linux-$VERSION
 (cd ~/rpmbuild/SOURCES/b-datum-linux-$VERSION && perl Makefile.PL PREFIX=/usr)
 (cd ~/rpmbuild/SOURCES/ && tar cvfzp b-datum-linux-$VERSION.tar.gz b-datum-linux-$VERSION)
-(cd ~/rpmbuild/SPECS && rpmbuild -ba b-datum-linux.spec)
+(cd ~/rpmbuild/SPECS && rpmbuild -bb --define "_binary_filedigest_algorithm 1" --define "_binary_payload 1" b-datum-linux.spec)
 
