@@ -65,8 +65,8 @@ regular correspondente:
 
 ## Autores
 
-Gabriel Andrade <gabriel@b-datum.com>
-Thiago Rondon <thiago@b-datum.com>
+- Gabriel Andrade <gabriel@b-datum.com>
+- Thiago Rondon <thiago@b-datum.com>
 
 ## Licença e Copyright
 
