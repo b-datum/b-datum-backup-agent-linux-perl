@@ -17,6 +17,8 @@ WriteMakefile(
   PREREQ_PM        => {
     'Net::SSLeay'        => 0,
     'IO::Socket::SSL'    => 0,
-  }
+  },
+  NO_PACKLIST => 1,
+  NO_PERLLOCAL => 1,
 );
 
