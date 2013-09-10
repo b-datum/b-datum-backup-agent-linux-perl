@@ -1,5 +1,6 @@
-bdatum-backup
-bdatum-config
+bin/bdatum-backup
+bin/bdatum-config
+bin/bdatum-restore
 Changes
 etc/bdatum/backup.conf
 etc/cron.d/bdatum-backup
@@ -7,3 +8,5 @@ install.sh
 Makefile.PL
 README.md
 scripts/debpackage.sh
+scripts/fatpack.sh
+scripts/rpmpackage.sh
