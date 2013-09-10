@@ -59,7 +59,7 @@ if [ ! $NOT_INSTALL_PERLBREW ] ; then
   source ~/perl5/perlbrew/etc/bashrc
 fi
 
-cpanm -n inc::Module::Install local::lib Log::Syslog::Fast MooseX::Traits Module::Extract::Use LWP::Protocol::https
+cpanm -n inc::Module::Install LWP::Protocol::https
 
 mkdir -p $BASEBIN
 
