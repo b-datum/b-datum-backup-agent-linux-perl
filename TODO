@@ -1,5 +1,0 @@
-- all options in config file
-- _die para tratar erros, e enviar para /...
-- check if has space left to do backup based on stage directory.
-- option to remove cache remotely.
-- Remove dep to syslog, Fedora just have rsyslogd.
