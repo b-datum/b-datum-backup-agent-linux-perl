@@ -1,11 +1,11 @@
-b-datum-backup-perl (0.23) unstable; urgency=low
+b-datum (0.23) unstable; urgency=low
   
   * package bdatum-backup and bdatum-restore with fatpack.
   * Just Net::SSLeay and Net::SSL as dep.
 
  -- Thiago Rondon <thiago@b-datum.com>  Sat, 07 Sep 2013 11:28:45 -0300
 
-b-datum-backup-perl (0.22) unstable; urgency=low
+b-datum (0.22) unstable; urgency=low
 
   * disable cache in bdatum-restore
   * _validate_key return error if empty string
@@ -16,7 +16,7 @@ b-datum-backup-perl (0.22) unstable; urgency=low
 
  -- Thiago Rondon <thiago@b-datum.com>  Tue, 03 Sep 2013 19:28:53 -0300
 
-b-datum-backup-perl (0.21) unstable; urgency=low
+b-datum (0.21) unstable; urgency=low
 
   * First version of bdatum-restore
   * At daemon&persistent mode, killing process when 401.
@@ -25,20 +25,20 @@ b-datum-backup-perl (0.21) unstable; urgency=low
 
  -- Thiago Rondon <thiago@b-datum.com>  Thu, 29 Aug 2013 23:50:26 -0300
 
-b-datum-backup-perl (0.20) unstable; urgency=low
+b-datum (0.20) unstable; urgency=low
 
   * New name for package, just b-datum-linux.
   * Using Getopt::Long instead of ::Descriptive, a lot of dependencies (and XS)
 
  -- Thiago Rondon <thiago@b-datum.com>  Sun, 25 Aug 2013 11:42:34 -0300
 
-b-datum-backup-perl (0.19) unstable; urgency=low
+b-datum (0.19) unstable; urgency=low
 
   * postinst: Don't run bdatum-config if box already has /etc/bdatum/backup.conf
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 21 Aug 2013 19:54:18 -0300
 
-b-datum-backup-perl (0.18) unstable; urgency=high
+b-datum (0.18) unstable; urgency=high
 
   * chomp to fix compare in _get_changes to symlink
   * check_alive to make agent linux online
@@ -47,7 +47,7 @@ b-datum-backup-perl (0.18) unstable; urgency=high
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 21 Aug 2013 13:29:53 -0300
 
-b-datum-backup-perl (0.17) unstable; urgency=high
+b-datum (0.17) unstable; urgency=high
 
   * Fix to remove dirs
   * Put all dirs in the cache file
@@ -58,7 +58,7 @@ b-datum-backup-perl (0.17) unstable; urgency=high
 
  -- Thiago Rondon <thiago@b-datum.com>  Sun, 18 Aug 2013 19:58:50 -0300
 
-b-datum-backup-perl (0.16) unstable; urgency=medium
+b-datum (0.16) unstable; urgency=medium
 	
   * support for syslog
   * daemon mode
@@ -70,7 +70,7 @@ b-datum-backup-perl (0.16) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Sat, 17 Aug 2013 18:43:20 -0300
 
-b-datum-backup-perl (0.15) unstable; urgency=low
+b-datum (0.15) unstable; urgency=low
 
   * exiting when 401
   * remove lock file when finish
@@ -78,7 +78,7 @@ b-datum-backup-perl (0.15) unstable; urgency=low
 
  -- Thiago Rondon <thiago@b-datum.com>  Fri, 16 Aug 2013 17:49:56 -0300
 
-b-datum-backup-perl (0.14) unstable; urgency=medium
+b-datum (0.14) unstable; urgency=medium
 	
   * check if bdatum backup is already running for specific directory
   * _make_control_file instead of _make_cache_filename
@@ -93,20 +93,20 @@ b-datum-backup-perl (0.14) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Thu, 15 Aug 2013 23:49:29 -0300
 
-b-datum-backup-perl (0.13) unstable; urgency=low
+b-datum (0.13) unstable; urgency=low
 
   * /sys in blacklist for linux.
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 07 Aug 2013 23:27:32 -0300
 
-b-datum-backup-perl (0.12) unstable; urgency=low
+b-datum (0.12) unstable; urgency=low
 
   * only one staging dir
   * fix blacklist for staging dir and linux
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 07 Aug 2013 13:34:48 -0300
 
-b-datum-backup-perl (0.11) unstable; urgency=medium
+b-datum (0.11) unstable; urgency=medium
 	
   * fixing incorrect use of lstat.
   * safely copying file before upload
@@ -117,7 +117,7 @@ b-datum-backup-perl (0.11) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Tue, 06 Aug 2013 14:06:30 -0300
 
-b-datum-backup-perl (0.10) unstable; urgency=low
+b-datum (0.10) unstable; urgency=low
   
   * set user agent
   * fixed header in help message
@@ -127,14 +127,14 @@ b-datum-backup-perl (0.10) unstable; urgency=low
 
  -- Thiago Rondon <thiago@b-datum.com>  Sun, 28 Jul 2013 08:24:59 -0300
 
-b-datum-backup-perl (0.09) unstable; urgency=low
+b-datum (0.09) unstable; urgency=low
         
   * fixed bugs in Makefile.PL
   * function for write manifest file
 
  -- Thiago Rondon <thiago@b-datum.com>  Thu, 25 Jul 2013 10:31:13 -0300
 
-b-datum-backup-perl (0.08) unstable; urgency=medium
+b-datum (0.08) unstable; urgency=medium
 
   * bdatum-config for create config file
   * run bdatum-config in debian/postinst
@@ -149,20 +149,20 @@ b-datum-backup-perl (0.08) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 24 Jul 2013 23:37:00 -0300
 
-b-datum-backup-perl (0.07) unstable; urgency=medium
+b-datum (0.07) unstable; urgency=medium
         
   * fixed bug in sending manifest file
   * skipping pipes, sockets, mounting points, etc..
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 24 Jul 2013 19:22:40 -0300
 
-b-datum-backup-perl (0.06) unstable; urgency=medium
+b-datum (0.06) unstable; urgency=medium
 
   * fix dependencies declation
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 24 Jul 2013 10:57:32 -0300
 
-b-datum-backup-perl (0.05) unstable; urgency=medium
+b-datum (0.05) unstable; urgency=medium
 
   * adding support for profiles in config
   * adding support for manifest files
@@ -170,7 +170,7 @@ b-datum-backup-perl (0.05) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Tue, 23 Jul 2013 18:15:52 -0300
 
-b-datum-backup-perl (0.04) unstable; urgency=medium
+b-datum (0.04) unstable; urgency=medium
 
   * check if LWP::UserAgent::Determined has ssl_opts method, because the old version of this module doesnt have this option and broke some boxes
   * change $0 for security reasons
@@ -183,7 +183,7 @@ b-datum-backup-perl (0.04) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Mon, 22 Jul 2013 14:44:51 -0300
 
-b-datum-backup-perl (0.03) unstable; urgency=medium
+b-datum (0.03) unstable; urgency=medium
 	
   * $ENV{BDATUM_BASE_URL} for local tests
   * change for INI files, because use of YAML::Syck or YAML to parse config files is DEPRECATED.
@@ -196,13 +196,13 @@ b-datum-backup-perl (0.03) unstable; urgency=medium
 
  -- Thiago Rondon <thiago@b-datum.com>  Sun, 21 Jul 2013 03:31:26 -0300
 
-b-datum-backup-perl (0.02) unstable; urgency=low
+b-datum (0.02) unstable; urgency=low
   
   * script to make deb package
   
  -- Thiago Rondon <thiago@b-datum.com>  Sat, 20 Jul 2013 23:34:20 -0300
 
-b-datum-backup-perl (0.01) unstable; urgency=low
+b-datum (0.01) unstable; urgency=low
   
   * Initial releasex
 
