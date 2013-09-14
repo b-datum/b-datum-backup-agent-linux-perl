@@ -5,7 +5,7 @@ WriteMakefile(
   VERSION    => '0.23',
   ABSTRACT   => 'Provides tools for backup and restore files with b-datum.com',
   LICENSE    => 'GPLv3',
-  EXE_FILES  => [ 'bin/bdatum-backup', 'bin/bdatum-restore', 'bdatum-config' ],
+  EXE_FILES  => [ 'bin/bdatum-backup', 'bin/bdatum-restore', 'bin/bdatum-config' ],
   META_MERGE => {
     repository => {
       type => 'git',
