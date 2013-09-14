@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker 6.76;
 WriteMakefile(
   NAME       => 'bdatum-backup',
   VERSION    => '0.23',
-  ABSTRACT   => 'b-datum backup',
+  ABSTRACT   => 'Provides tools for backup and restore files with b-datum.com',
   LICENSE    => 'GPLv3',
   EXE_FILES  => [ 'bin/bdatum-backup', 'bin/bdatum-restore', 'bdatum-config' ],
   META_MERGE => {
