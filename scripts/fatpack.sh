@@ -1,6 +1,13 @@
 
-( echo "#!/usr/bin/env perl" ; fatpack file ; cat src/bdatum-backup ) > bin/bdatum-backup
-( echo "#!/usr/bin/env perl" ; fatpack file ; cat src/bdatum-restore ) > bin/bdatum-restore
+for file in bdatum-backup bdatum-restore ; do
 
-chmod 755 bin/bdatum-backup
-chmod 755 bin/bdatum-restore
+	( cat src/header.pl ; \
+		fatpack file ; \
+		cat src/$file ) \
+		> bin/$file
+
+	chmod 755 bin/$file
+
+done
+
+
