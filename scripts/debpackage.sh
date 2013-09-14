@@ -23,6 +23,7 @@ DEBFULLNAME="Thiago Rondon" \
 EMAIL="staff@b-datum.com" \
 dh-make-perl $TARGET_DIR --desc 'b-datum backup' --email 'staff@b-datum.com' --packagename 'b-datum-backup-perl' --intrusive --depends dialog
 cp $TARGET_DIR/linux/postinst $TARGET_DIR/debian/postinst
+cp $TARGET_DIR/Changes $TARGET_DIR/debian/changelog
 (cd $TARGET_DIR && debuild --no-tgz-check -us -uc)
 
 

@@ -1,142 +1,209 @@
-See http://github.com/b-datum/b-datum-linux for the latest development.
+b-datum-backup-perl (0.23) unstable; urgency=low
+  
+  * package bdatum-backup and bdatum-restore with fatpack.
+  * Just Net::SSLeay and Net::SSL as dep.
 
-Relase 0.23 Sat Sep  7 11:28:45 BRT 2013
-	- package bdatum-backup and bdatum-restore with fatpack.
-	- Just Net::SSLeay and Net::SSL as dep.
+ -- Thiago Rondon <thiago@b-datum.com>  Sat, 07 Sep 2013 11:28:45 -0300
 
-Release 0.22 Tue Sep  3 19:28:53 BRT 2013
-	- disable cache in bdatum-restore
-	- _validate_key return error if empty string
-	- Add fatlib directory with pure perl modules
-	- Add copyrights for modules embedded
-	- JSON:PP is pure perl for deps
-	- sending mtime metadata
+b-datum-backup-perl (0.22) unstable; urgency=low
 
-Release 0.21 Thu Aug 29 23:50:26 BRT 2013
-	- First version of bdatum-restore
-	- at daemon&persistent mode, killing process when 401.
-	- Remove DateTime
-	- pairwise, stripped from List::MoreUtils source, removing a XS module.
+  * disable cache in bdatum-restore
+  * _validate_key return error if empty string
+  * Add fatlib directory with pure perl modules
+  * Add copyrights for modules embedded
+  * JSON:PP is pure perl for deps
+  * sending mtime metadata
 
-Release 0.20 Sun Aug 25 11:42:34 BRT 2013
-        - New name for package, just b-datum-linux.
-        - Using Getopt::Long instead of ::Descriptive, a lot of dependencies (and XS)
+ -- Thiago Rondon <thiago@b-datum.com>  Tue, 03 Sep 2013 19:28:53 -0300
 
-Release 0.19 Wed Aug 21 19:54:18 BRT 2013
-	- postinst: Don't run bdatum-config if box already has /etc/bdatum/backup.conf
+b-datum-backup-perl (0.21) unstable; urgency=low
 
-Release 0.18 Wed Aug 21 13:29:53 BRT 2013
-	- chomp to fix compare in _get_changes to symlink
-	- check_alive to make agent linux online
-	- remove lastbackup file
-	- fix persistent mode with daemon.
+  * First version of bdatum-restore
+  * At daemon&persistent mode, killing process when 401.
+  * Remove DateTime
+  * pairwise, stripped from List::MoreUtils source, removing a XS module.
 
-Release 0.17 Sun Aug 18 19:58:50 BRT 2013
-	- fix to remove dirs
-	- put all dirs in the cache file
-	- fix for backup empty dirs
-	- fast second-first backup algorithm
-	- _write_default_config, chmod 0400 $TARGET_FILE
-	- error_handler for File::Next to _log_error
+ -- Thiago Rondon <thiago@b-datum.com>  Thu, 29 Aug 2013 23:50:26 -0300
 
-Release 0.16 Sat Aug 17 18:43:20 BRT 2013
-	- support for syslog
-	- daemon mode
-	- Skipping file if size is >5TB or >PART_SIZE*10000
-	- new option for set part size to multipart upload
-	- add license in the header of bdatum-backup
-	- persistent_time option
-	- just one time try to send the file, after 30 seconds (or --retry_time=N)
+b-datum-backup-perl (0.20) unstable; urgency=low
 
-Release 0.15 Fri Aug 16 17:49:56 BRT 2013
-	- exiting when 401
-	- remove lock file when finish
-	- just one time try to send the file, after 30 seconds
+  * New name for package, just b-datum-linux.
+  * Using Getopt::Long instead of ::Descriptive, a lot of dependencies (and XS)
 
-Release 0.14 Thu Aug 15 23:49:29 BRT 2013
-	- check if bdatum backup is already running for specific directory
-	- _make_control_file instead of _make_cache_filename
-	- refactoring to persistent mode
-	- $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0 for local proxing
-	- support transparent proxying.
-	- write default config if $ETC not exist and the user not filled all the options
-	- refactoring log functions and use just one for warnings
-	- Support proxy for HTTP and HTTPS
-	- arranging order of the modules used.
-	- using grep instead of List::Util qw(first), one less dependency.
+ -- Thiago Rondon <thiago@b-datum.com>  Sun, 25 Aug 2013 11:42:34 -0300
 
-Release 0.13 Wed Aug  7 23:27:32 BRT 2013
-	- /sys in blacklist for linux.
+b-datum-backup-perl (0.19) unstable; urgency=low
 
-Release 0.12 Wed Aug  7 13:34:48 BRT 2013
-	- only one staging dir
-	- fix blacklist for staging dir and linux
+  * postinst: Don't run bdatum-config if box already has /etc/bdatum/backup.conf
 
-Release 0.11 Tue Aug  6 14:06:30 BRT 2013
-	- fixing incorrect use of lstat.
-	- safely copying file before upload
-	- using regexp rules instead of bash-like wildcards for blacklist
-	- adding support for blacklist fixing error in cache write
-	- create safe (stage) temporary directory for multiple instances
-	- skipping staging dir by blacklist
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 21 Aug 2013 19:54:18 -0300
 
-Release 0.10 Sun Jul 28 08:24:59 BRT 2013
-	- set user agent
-	- fixed header in help message
-	- fixed cache for multiple instances
-	- _log_* functions
-	- validade keys and path before run.
+b-datum-backup-perl (0.18) unstable; urgency=high
+
+  * chomp to fix compare in _get_changes to symlink
+  * check_alive to make agent linux online
+  * Remove lastbackup file
+  * Fix persistent mode with daemon.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 21 Aug 2013 13:29:53 -0300
+
+b-datum-backup-perl (0.17) unstable; urgency=high
+
+  * Fix to remove dirs
+  * Put all dirs in the cache file
+  * Fix for backup empty dirs
+  * Fast second-first backup algorithm
+  * _write_default_config, chmod 0400 $TARGET_FILE
+  * error_handler for File::Next to _log_error
+
+ -- Thiago Rondon <thiago@b-datum.com>  Sun, 18 Aug 2013 19:58:50 -0300
+
+b-datum-backup-perl (0.16) unstable; urgency=medium
 	
-Release 0.09 Thu Jul 25 10:31:13 BRT 2013
-        - fixed bugs in Makefile.PL
-	- function for write manifest file
+  * support for syslog
+  * daemon mode
+  * Skipping file if size is >5TB or >PART_SIZE*10000
+  * new option for set part size to multipart upload
+  * add license in the header of bdatum-backup
+  * persistent_time option
+  * just one time try to send the file, after 30 seconds (or --retry_time=N)
 
-Release 0.08 Wed Jul 24 23:37:00 BRT 2013
-        - bdatum-config for create config file
-	- run bdatum-config in debian/postinst
-	- change Config::INI::Reader to Config::Any::INI
-	- change dir option in command to path, like in config file
-	- add debug mode
-	- fix short options in getopt
-	- reorganizing help message
-	- making better use of the profile
-	- not always use the args of the command line
-	- exit when _send_request get 401 http unauthorized
+ -- Thiago Rondon <thiago@b-datum.com>  Sat, 17 Aug 2013 18:43:20 -0300
 
-Release 0.07 Wed Jul 24 19:22:40 BRT 2013
-        - fixed bug in sending manifest file
-        - skipping pipes, sockets, mounting points, etc..
+b-datum-backup-perl (0.15) unstable; urgency=low
 
-Release 0.06 Wed Jul 24 10:57:32 BRT 2013
-        - fix dependencies declation
+  * exiting when 401
+  * remove lock file when finish
+  * just one time try to send the file, after 30 seconds
 
-Release 0.05 Tue Jul 23 18:15:52 BRT 2013
-        - adding support for profiles in config
-	- adding support for manifest files
-	- fix for dealing with symlinks
+ -- Thiago Rondon <thiago@b-datum.com>  Fri, 16 Aug 2013 17:49:56 -0300
 
-Release 0.04 Mon Jul 22 14:44:51 BRT 2013
-	- check if LWP::UserAgent::Determined has ssl_opts method, because the old version of this module doesnt have this option and broke some boxes
-	- change $0 for security reasons
-	- use travisci to make more tests.
-	- update README with how to install and travisci image
-	- add packages to install and make deb package
-	- $NOT_INSTALL_PERLBREW option for travisci
-	- .gitignore
-	- cron.d example
+b-datum-backup-perl (0.14) unstable; urgency=medium
+	
+  * check if bdatum backup is already running for specific directory
+  * _make_control_file instead of _make_cache_filename
+  * refactoring to persistent mode
+  * $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0 for local proxing
+  * support transparent proxying.
+  * write default config if $ETC not exist and the user not filled all the options
+  * refactoring log functions and use just one for warnings
+  * Support proxy for HTTP and HTTPS
+  * arranging order of the modules used.
+  * using grep instead of List::Util qw(first), one less dependency.
 
-Release 0.03 Sun Jul 21 03:31:26 BRT 2013
-	- $ENV{BDATUM_BASE_URL} for local tests
-	- change for INI files, because use of YAML::Syck or YAML to parse config files is DEPRECATED.
-	- fix bitwise for stat->mode of configfile
-	- Interpolation typo
-	- translate help message
-	- add config example
-	- exit status codes, based on sysexits.h
-	- new option, load config file
+ -- Thiago Rondon <thiago@b-datum.com>  Thu, 15 Aug 2013 23:49:29 -0300
 
-Release 0.02 Sat Jul 20 23:34:20 BRT 2013
-	- script to make deb package
+b-datum-backup-perl (0.13) unstable; urgency=low
 
-Release 0.01
-	- initial version
+  * /sys in blacklist for linux.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 07 Aug 2013 23:27:32 -0300
+
+b-datum-backup-perl (0.12) unstable; urgency=low
+
+  * only one staging dir
+  * fix blacklist for staging dir and linux
+
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 07 Aug 2013 13:34:48 -0300
+
+b-datum-backup-perl (0.11) unstable; urgency=medium
+	
+  * fixing incorrect use of lstat.
+  * safely copying file before upload
+  * using regexp rules instead of bash-like wildcards for blacklist
+  * adding support for blacklist fixing error in cache write
+  * create safe (stage) temporary directory for multiple instances
+  * skipping staging dir by blacklist
+
+ -- Thiago Rondon <thiago@b-datum.com>  Tue, 06 Aug 2013 14:06:30 -0300
+
+b-datum-backup-perl (0.10) unstable; urgency=low
+  
+  * set user agent
+  * fixed header in help message
+  * fixed cache for multiple instances
+  * _log_* functions
+  * validade keys and path before run.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Sun, 28 Jul 2013 08:24:59 -0300
+
+b-datum-backup-perl (0.09) unstable; urgency=low
+        
+  * fixed bugs in Makefile.PL
+  * function for write manifest file
+
+ -- Thiago Rondon <thiago@b-datum.com>  Thu, 25 Jul 2013 10:31:13 -0300
+
+b-datum-backup-perl (0.08) unstable; urgency=medium
+
+  * bdatum-config for create config file
+  * run bdatum-config in debian/postinst
+  * change Config::INI::Reader to Config::Any::INI
+  * change dir option in command to path, like in config file
+  * add debug mode
+  * fix short options in getopt
+  * reorganizing help message
+  * making better use of the profile
+  * not always use the args of the command line
+  * exit when _send_request get 401 http unauthorized
+
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 24 Jul 2013 23:37:00 -0300
+
+b-datum-backup-perl (0.07) unstable; urgency=medium
+        
+  * fixed bug in sending manifest file
+  * skipping pipes, sockets, mounting points, etc..
+
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 24 Jul 2013 19:22:40 -0300
+
+b-datum-backup-perl (0.06) unstable; urgency=medium
+
+  * fix dependencies declation
+
+ -- Thiago Rondon <thiago@b-datum.com>  Wed, 24 Jul 2013 10:57:32 -0300
+
+b-datum-backup-perl (0.05) unstable; urgency=medium
+
+  * adding support for profiles in config
+  * adding support for manifest files
+  * fix for dealing with symlinks
+
+ -- Thiago Rondon <thiago@b-datum.com>  Tue, 23 Jul 2013 18:15:52 -0300
+
+b-datum-backup-perl (0.04) unstable; urgency=medium
+
+  * check if LWP::UserAgent::Determined has ssl_opts method, because the old version of this module doesnt have this option and broke some boxes
+  * change $0 for security reasons
+  * use travisci to make more tests.
+  * update README with how to install and travisci image
+  * add packages to install and make deb package
+  * $NOT_INSTALL_PERLBREW option for travisci
+  * .gitignore
+  * cron.d example
+
+ -- Thiago Rondon <thiago@b-datum.com>  Mon, 22 Jul 2013 14:44:51 -0300
+
+b-datum-backup-perl (0.03) unstable; urgency=medium
+	
+  * $ENV{BDATUM_BASE_URL} for local tests
+  * change for INI files, because use of YAML::Syck or YAML to parse config files is DEPRECATED.
+  * fix bitwise for stat->mode of configfile
+  * Interpolation typo
+  * translate help message
+  * add config example
+  * exit status codes, based on sysexits.h
+  * new option, load config file
+
+ -- Thiago Rondon <thiago@b-datum.com>  Sun, 21 Jul 2013 03:31:26 -0300
+
+b-datum-backup-perl (0.02) unstable; urgency=low
+  
+  * script to make deb package
+  
+ -- Thiago Rondon <thiago@b-datum.com>  Sat, 20 Jul 2013 23:34:20 -0300
+
+b-datum-backup-perl (0.01) unstable; urgency=low
+  
+  * Initial releasex
+
+ -- Thiago Rondon <thiago@b-datum.com>  Sat, 19 Jul 2013 23:34:20 -0300
