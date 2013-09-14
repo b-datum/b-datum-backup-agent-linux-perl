@@ -2,7 +2,7 @@
 %define pkgversion 1
 %define rpmversion 0.23
 
-Name:		b-datum-linux
+Name:		b-datum
 Version:	%{rpmversion}	
 Release:	1%{?dist}
 Summary:	bdatum-linux - Provides tools for backup and restore files with b-datum.com	
