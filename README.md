@@ -1,8 +1,6 @@
 # b-datum-linux
 
-Ferramenta de backup b-datum (http://www.b-datum.com/) para Linux.
-
-[![Build Status](https://secure.travis-ci.org/b-datum/b-datum-linux.png?branch=master)](https://travis-ci.org/b-datum/b-datum-linux)
+Ferramenta para backup e restauração de arquivos utilizando a b-datum (http://www.b-datum.com/) para Linux.
 
 ## Instalação
 
@@ -16,7 +14,7 @@ Para instalar no Ubuntu/Debian basta utilizar o pacote já pronto e utilizar o g
 # gdebi b-datum-backup-perl_0.23-1_all.deb
 ```
 
-Para instalar no CentOS/Fedora/RedHat, basta baixar o pacote:
+Para instalar no CentOS/Fedora/RedHat/OpenSuse, basta baixar o pacote:
 
 ```
 # cd /tmp
