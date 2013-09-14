@@ -9,3 +9,9 @@ README.md
 scripts/debpackage.sh
 scripts/fatpack.sh
 scripts/rpmpackage.sh
+src/bdatum-backup
+src/bdatum-restore
+src/header.pl
+MANIFEST
+linux/postinst
+linux/b-datum-linux.spec
