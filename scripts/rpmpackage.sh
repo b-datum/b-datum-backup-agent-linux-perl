@@ -25,7 +25,7 @@ fi
 mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
 cp b-datum-linux/linux/b-datum-linux.spec ~/rpmbuild/SPECS
-cp -rfpad b-datum-linux ~/rpmbuild/SOURCES/b-datum-linux-$VERSION
-(cd ~/rpmbuild/SOURCES/ && tar cvfzp b-datum-linux-$VERSION.tar.gz b-datum-linux-$VERSION)
+cp -rfpad b-datum-linux ~/rpmbuild/SOURCES/b-datum-$VERSION
+(cd ~/rpmbuild/SOURCES/ && tar cvfzp b-datum-$VERSION.tar.gz b-datum-$VERSION)
 (cd ~/rpmbuild/SPECS && rpmbuild -bb --define "_binary_filedigest_algorithm 1" --define "_binary_payload 1" b-datum-linux.spec)
 

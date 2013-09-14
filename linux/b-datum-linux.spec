@@ -5,14 +5,14 @@
 Name:		b-datum
 Version:	%{rpmversion}	
 Release:	1%{?dist}
-Summary:	bdatum-linux - Provides tools for backup and restore files with b-datum.com	
+Summary:	Provides tools for backup and restore files with b-datum.com	
 Group:		Applications/Archiving
 License:	GPLv3
 URL:		http://www.b-datum.com/	
 Vendor:		Thiago Rondon <thiago@b-datum.com>
 Packager:	Thiago Rondon <thiago@b-datum.com>
 
-Source:		b-datum-linux-%{version}.tar.gz
+Source:		b-datum-%{version}.tar.gz
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:	perl-IO-Socket-SSL, perl-Net-SSLeay
