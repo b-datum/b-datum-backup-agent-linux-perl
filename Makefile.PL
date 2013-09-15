@@ -1,7 +1,9 @@
 use ExtUtils::MakeMaker 6.76;
 
 WriteMakefile(
-  NAME       => 'bdatum-backup',
+  NAME       => 'bdatum',
+  AUTHOR     => 'bdatum-staff',
+  DISTNAME   => 'bdatum',
   VERSION    => '0.23', # dh-make-perl, we can't use VERSION_FROM.
   ABSTRACT   => 'Provides tools for backup and restore files with b-datum.com',
   LICENSE    => 'GPLv3',
