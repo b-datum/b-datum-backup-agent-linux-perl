@@ -123,3 +123,5 @@ HTTP/Message.pm
 Socket.pm
 Try/Tiny.pm
 overload.pm
+bdatum/Constants.pm
+bdatum/Util.pm
