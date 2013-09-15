@@ -23,7 +23,6 @@ use Encode;
 use LWP::UserAgent::Determined;
 use LWP::ConnCache;
 use IO::Socket::SSL;
-#use Net::SSL ();
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
 use HTTP::Request;
@@ -36,29 +35,13 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
-use Module::Load::Conditional qw(can_load);
+use bdatum::Constants ':all';
+use bdatum::Util;
 
-# Yes, Fedora don't have any workaround for syslog.
-our $can_syslog = 0;
-if (can_load(modules => { 'Sys::Syslog' => undef })) {
-    use Sys::Syslog qw(:standard :macros);
-    $can_syslog = 1;
-}
+use version;
+our $VERSION = qv('0.23');
 
-use version; our $VERSION = qv('0.23'); # same line, keep backcompat with older MakeMaker
-
-use constant {
-  BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
-  LIMIT_PARTS => 10000,
-
-  # file attrs
-  MTIME   => 0,
-  ETAG    => 1,
-  UID     => 2,
-  GID     => 3,
-  UMASK   => 4,
-  SYMLINK => 5
-};
+our $util = bdatum::Util->new;
 
 # ,=> to avoid fat comma stringification, the keys
 # need to be integers
@@ -73,8 +56,6 @@ my %metadata_map = (
   ,      => 'meta-symlink',
   MTIME, => 'meta-mtime'
 );
-
-our $b_datum_dir = "$ENV{HOME}/.b-datum";
 
 our ( $node_key,  $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
@@ -118,7 +99,7 @@ sub pairwise (&\@\@) {
 }
 
 sub _unauthorized_abort {
-  &_log_error("*** ERROR: 401 http unauthorized");
+  $util->log_error("*** ERROR: 401 http unauthorized");
   exit 77;    # EX_NOPERM
 }
 
@@ -131,7 +112,7 @@ sub run {
     eval { &backup; };
 
     if ($@) {
-      &_log_error($@);
+      $util->log_error($@);
     }
     last unless $opt->{persistent};
     &check_alive;
@@ -142,7 +123,7 @@ sub run {
 }
 
 sub check_alive {
-  &_log_info("Sending alive to b-datum");
+  $util->log_info("Sending alive to b-datum");
 
   my $uri = URI->new(BASE_URL);
   $uri->path('alive');
@@ -151,7 +132,7 @@ sub check_alive {
   my $res = _send_request($req);
 
   if ( !$res->is_success ) {
-    &_log_warn("WARNING: can't send alive to b-datum");
+    $util->log_warn("WARNING: can't send alive to b-datum");
   }
 
 }
@@ -269,6 +250,9 @@ sub options {
   &show_version if $opt->{version};
   &show_help    if $opt->{help};
 
+  $util->set_debug(1) if $opt->{debug};
+  $util->set_daemon(1) if $opt->{daemon};
+
   $0 = "[bdatum-backup]";
 
   # Defaults
@@ -287,7 +271,7 @@ sub options {
 
   # Check part_size
   if ( $opt->{part_size} < 5 or $opt->{part_size} > 500 ) {
-    &_log_error("part_size option need to be > 5 or < 500.");
+    $util->log_error("part_size option need to be > 5 or < 500.");
     exit(0);
   }
 
@@ -295,8 +279,8 @@ sub options {
   $PART_LIMIT_SIZE = $opt->{part_size} * 1024 * 1024;
 
   # create base dir
-  $stage_dir = join( '/', $b_datum_dir, 'stage' );
-  &_create_local_dir($b_datum_dir);
+  $stage_dir = join( '/', BASE_DIR, 'stage' );
+  &_create_local_dir(BASE_DIR);
   &_create_local_dir($stage_dir);
   $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
 
@@ -304,7 +288,7 @@ sub options {
     my $st = stat $configfile;
     my $mode = sprintf( '%04o', $st->mode & 07777 );
     if ( $mode ne '0400' ) {
-      &_log_error( "Please run 'chmod 0400 $configfile'", 78 );
+      $util->log_error( "Please run 'chmod 0400 $configfile'", 78 );
     }
 
     my $config_all = Config::Any::INI->load($configfile);
@@ -326,6 +310,7 @@ sub options {
   }
 
   # skipping staging dir by blacklist
+  my $b_datum_dir = BASE_DIR; # PBP - Bareword constants can't be interpolated.
   push( @blacklist, qr/^$b_datum_dir/, qr/^$stage_dir/ );
 
   # for linux
@@ -335,19 +320,19 @@ sub options {
   $partner_key = $opt->{partner_key} if $opt->{partner_key};
   $path        = $opt->{path}        if $opt->{path};
 
-  if ( !&_validate_key($node_key)
-    or !&_validate_key($partner_key)
-    or !&_validate_path($path) )
+  if ( !$util->validate_key($node_key)
+    or !$util->validate_key($partner_key)
+    or !$util->validate_path($path) )
   {
-    &_log_error( "Required option missing.", 64 );
+    $util->log_error( "Required option missing.", 64 );
   }
 }
 
 sub backup {
 
-  &_log_debug("Node key: $node_key");
-  &_log_debug("Partner key: $partner_key");
-  &_log_debug("Path: $path");
+  $util->log_debug("Node key: $node_key");
+  $util->log_debug("Partner key: $partner_key");
+  $util->log_debug("Path: $path");
 
   &_check_already_running;
 
@@ -418,7 +403,7 @@ sub backup {
 sub _get_files {
   return File::Next::everything(
     {
-      error_handler => sub { &_log_error(@_); },
+      error_handler => sub { $util->log_error(@_); },
 
       # show symlinks
       follow_symlinks => 1,
@@ -427,33 +412,33 @@ sub _get_files {
       file_filter => sub {
 
         -p $File::Next::name
-          && _log_warn("SKIPPING: $File::Next::name is a named pipe")
+          && $util->log_warn("SKIPPING: $File::Next::name is a named pipe")
           && return;
 
         -S $File::Next::name
-          && _log_warn("SKIPPING: $File::Next::name is a socket")
+          && $util->log_warn("SKIPPING: $File::Next::name is a socket")
           && return;
 
         -b $File::Next::name
-          && _log_warn("SKIPPING: $File::Next::name is a block special file")
+          && $util->log_warn("SKIPPING: $File::Next::name is a block special file")
           && return;
 
         -p $File::Next::name
-          && _log_warn("SKIPPING: $File::Next::name is a named pipe")
+          && $util->log_warn("SKIPPING: $File::Next::name is a named pipe")
           && return;
 
         -c $File::Next::name
-          && _log_warn(
+          && $util->log_warn(
           "SKIPPING: $File::Next::name is a character special file")
           && return;
 
         -t $File::Next::name
-          && _log_warn("SKIPPING: $File::Next::name is is opened to a tty")
+          && $util->log_warn("SKIPPING: $File::Next::name is is opened to a tty")
           && return;
 
              !-R $File::Next::name
           && !-l $File::Next::name
-          && _log_warn("SKIPPING: $File::Next::name can't be read")
+          && $util->log_warn("SKIPPING: $File::Next::name can't be read")
           && return;
 
         !_in_blacklist($File::Next::name)
@@ -468,59 +453,6 @@ sub _get_files {
     },
     $path
   );
-}
-
-sub _validate_key {
-  my $key = shift || &_log_error( "Required option missing.", 64 );
-  my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
-  &_log_error("The key must be [a-zA-Z0-9]{20} -- $key") unless $val;
-  return $val;
-}
-
-sub _validate_path {
-  my $path = shift || return 0;
-  my $val = -d $path and -r $path;
-  &_log_error("The directory name is invalid -- $path") unless $val;
-  return $val;
-}
-
-sub _log {
-  my $level = shift;
-  my $msg = join( ' ', @_ );
- 
-  print "[$level] $msg\n" unless $opt->{daemon};
-  
-  return unless $can_syslog;
-
-  my $syslog_level = LOG_INFO;
-  $syslog_level = LOG_DEBUG   if $level eq 'debug';
-  $syslog_level = LOG_WARNING if $level eq 'warn';
-  $syslog_level = LOG_ERR     if $level eq 'error';
-
-  openlog( $0, 'pid', LOG_USER );
-  syslog( $syslog_level, "[$level] $msg" );
-  closelog();
-
-  return 1;
-}
-
-sub _log_debug {
-  return unless $opt->{debug};
-  return &_log( 'debug', @_ );
-}
-
-sub _log_error {
-  my ( $msg, $exit ) = @_;
-  &_log( 'error', $msg );
-  exit $exit if $exit;
-}
-
-sub _log_info {
-  return &_log( 'info', @_ );
-}
-
-sub _log_warn {
-  return &_log( 'warn', @_ );
 }
 
 sub is_folder_empty {
@@ -571,7 +503,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
     }
 
     # here, we go.
-    &_log_info("processing: $file");
+    $util->log_info("processing: $file");
 
     if ( -d $file ) {
       $cache{"$file/"} = [];
@@ -594,13 +526,13 @@ FILE: while ( defined( my $file = $files->() ) ) {
     if ( ( $file_size > $PART_LIMIT_SIZE * LIMIT_PARTS )
       or $file_size > ( 5 * 1024 * 1024 * 1024 * 1025 ) )
     {
-      &_log_error(
+      $util->log_error(
 "Skipping $file, because the size ($file_size) is >5TB or >PART_SIZE*10000"
       );
       next;
     }
 
-    &_log_info("Sending $file...");
+    $util->log_info("Sending $file...");
 
     {
       $pm->start and next;
@@ -626,8 +558,8 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
         catch { $error = $_; sleep(3); };
         if ($error) {
-          &_log_warn("Error sending $file trying again... $attempt");
-          &_log_warn("\t\t$error");
+          $util->log_warn("Error sending $file trying again... $attempt");
+          $util->log_warn("\t\t$error");
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
@@ -646,8 +578,8 @@ FILE: while ( defined( my $file = $files->() ) ) {
   $pm->wait_all_children;
 
   my $end = time();
-  &_log_info("*\n*\n*\n* Started: $start");
-  &_log_info("* Completed: $end");
+  $util->log_info("*\n*\n*\n* Started: $start");
+  $util->log_info("* Completed: $end");
 
   _write_cache(%cache);
 
@@ -656,7 +588,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 sub _in_blacklist {
   my $file = shift;
   my $yes = grep { $file =~ $_ } @blacklist;
-  _log_warn("SKIPPING: $file is in blacklist") if $yes;
+  $util->log_warn("SKIPPING: $file is in blacklist") if $yes;
   return $yes;
 }
 
@@ -743,7 +675,7 @@ sub send_file {
     return _send_multipart(@_);
   }
 
-  &_log_info("DONE");
+  $util->log_info("DONE");
 
 }
 
@@ -763,7 +695,7 @@ sub _send_multipart {
   my ( $file, $attrs, $changes ) = @_;
 
   my $etag = $attrs->[ETAG];
-  &_log_info("init multipart upload to $file");
+  $util->log_info("init multipart upload to $file");
 
   my $uri = URI->new(BASE_URL);
   $uri->path('storage');
@@ -791,7 +723,7 @@ sub _send_multipart {
   my @parts;
 
   while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
-    &log_info("sending part $i of $file");
+    $util->log_info("sending part $i of $file");
 
     my $uri = URI->new(BASE_URL);
     $uri->path('storage');
@@ -812,7 +744,7 @@ sub _send_multipart {
 
     my $res = _send_request($req);
 
-    &log_info("finish upload part $i of $file.");
+    $util->log_info("finish upload part $i of $file.");
   }
   $fh->close;
 
@@ -833,7 +765,7 @@ sub _send_multipart {
     }
     );
   _send_request($req);
-  &_log_info("finish upload multipart to $file");
+  $util->log_info("finish upload multipart to $file");
 
   _write_to_manifest( $manifest, "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
 
@@ -860,7 +792,7 @@ sub _mkdir {
   my $uri = URI->new(BASE_URL);
 
   $file = "$file/";
-  &_log_info("$file is an empty dir");
+  $util->log_info("$file is an empty dir");
 
   $uri->path('/storage');
 
@@ -883,7 +815,7 @@ sub _delete {
   $uri->path('storage');
   $uri->query_form( path => $file );
   my $req = DELETE $uri;
-  &_log_info("deleting $file");
+  $util->log_info("deleting $file");
   my $res = $ua->request($req);
 
   _write_to_manifest( $manifest, "-$file\n\n" );
@@ -967,7 +899,7 @@ sub _delete_files {
 sub _make_control_file {
   my $suffix = shift;
   my $base   = md5_hex( $node_key . $partner_key . $path );
-  return "$b_datum_dir/$base.$suffix";
+  return join('/', BASE_DIR, "$base.$suffix");
 }
 
 sub _read_cache {
@@ -981,8 +913,8 @@ sub _read_cache {
 
   my $cache_version = &_read_cache_version($cache_file_version);
   if ( version->parse($cache_version) != version->parse($VERSION) ) {
-    &_log_info("Remove cache version file: $cache_file_version");
-    &_log_info("Remove cache file: $cache_file");
+    $util->log_info("Remove cache version file: $cache_file_version");
+    $util->log_info("Remove cache file: $cache_file");
     unlink($cache_file_version);
     unlink($cache_file);
   }
@@ -1009,7 +941,7 @@ sub _read_cache {
 
     $cache{$file} = $attrs;
   }
-  &_log_info( 'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info( 'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 
   close($fh);
   undef($fh);
@@ -1058,7 +990,7 @@ sub _write_cache {
     keys %cache;
 
   # $cache_file->close;
-  &_log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 
 sub lock {

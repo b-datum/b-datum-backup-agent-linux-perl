@@ -42,12 +42,13 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
-use version; our $VERSION = qv('0.23'); # same line, keep backcompat with older MakeMaker
+use bdatum::Constants ':all';
+use bdatum::Util;
 
-use constant { BASE_URL => $ENV{'BDATUM_BASE_URL'} || 'https://api.b-datum.com',
-};
+use version; 
+our $VERSION = qv('0.23');
 
-our $b_datum_dir = "$ENV{HOME}/.b-datum";
+our $util = bdatum::Util->new;
 
 our ( $node_key, $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile, $ua, $pm );
@@ -85,7 +86,7 @@ $SIG{USR1} = sub {
 };
 
 sub _unauthorized_abort {
-  &_log_error("*** ERROR: 401 http unauthorized");
+  $util->log_error("*** ERROR: 401 http unauthorized");
   exit 77;    # EX_NOPERM
 }
 
@@ -99,7 +100,7 @@ sub run {
     eval { &restore; };
 
     if ($@) {
-      &_log_error($@);
+      $util->log_error($@);
     }
     last unless $opt->{persistent};
     &check_alive;
@@ -110,7 +111,7 @@ sub run {
 }
 
 sub check_alive {
-  &_log_info("Sending alive to b-datum");
+  $util->log_info("Sending alive to b-datum");
 
   my $uri = URI->new(BASE_URL);
   $uri->path('alive');
@@ -119,7 +120,7 @@ sub check_alive {
   my $res = _send_request($req);
 
   if ( !$res->is_success ) {
-    &_log_warn("WARNING: can't send alive to b-datum");
+    $util->log_warn("WARNING: can't send alive to b-datum");
   }
 
 }
@@ -240,8 +241,11 @@ sub options {
   &show_version if $opt->{version};
   &show_help    if $opt->{help};
 
+  $util->set_debug(1) if $opt->{debug};
+  $util->set_daemon(1) if $opt->{daemon};
+
   if (!$opt->{basedir}) {
-    &_log_error( "Required option missing. (basedir)", 64 );
+    $util->log_error( "Required option missing. (basedir)", 64 );
   }
 
   # Defaults
@@ -261,8 +265,8 @@ sub options {
   }
 
   # create base dir
-  $stage_dir = join( '/', $b_datum_dir, 'stage' );
-  &_create_local_dir($b_datum_dir);
+  $stage_dir = join( '/', BASE_DIR, 'stage' );
+  &_create_local_dir(BASE_DIR);
   &_create_local_dir($stage_dir);
   $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
 
@@ -270,7 +274,7 @@ sub options {
     my $st = stat $configfile;
     my $mode = sprintf( '%04o', $st->mode & 07777 );
     if ( $mode ne '0400' ) {
-      &_log_error( "Please run 'chmod 0400 $configfile'", 78 );
+      $util->log_error( "Please run 'chmod 0400 $configfile'", 78 );
     }
 
     my $config_all = Config::Any::INI->load($configfile);
@@ -290,17 +294,17 @@ sub options {
   $partner_key = $opt->{partner_key} if $opt->{partner_key};
   $path        = $opt->{basedir}     if $opt->{basedir};
 
-  &_validate_key($node_key);
-  &_validate_key($partner_key);
-  &_validate_basedir($path);
+  $util->validate_key($node_key);
+  $util->validate_key($partner_key);
+  $util->validate_basedir($path);
 
 }
 
 sub restore {
 
-  &_log_debug("Node key: $node_key");
-  &_log_debug("Partner key: $partner_key");
-  &_log_debug("Path: $path");
+  $util->log_debug("Node key: $node_key");
+  $util->log_debug("Partner key: $partner_key");
+  $util->log_debug("Path: $path");
 
   &_check_already_running;
 
@@ -377,64 +381,8 @@ sub _get_files {
   my $res = _send_request($req);
   my $json;
   eval { $json = decode_json( $res->content ); };
-  &_log_error("Got an invalid file list") if $@ || !$json;
+  $util->log_error("Got an invalid file list") if $@ || !$json;
   return $json->{objects};
-}
-
-sub _validate_key {
-  my $key = shift || &_log_error( "Required option missing.", 64 );
-  my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
-  &_log_error("The key must be [a-zA-Z0-9]{20} -- $key"),
-    &_log_error( "Required option missing.", 64 )
-    unless $val;
-
-  return $val;
-}
-
-sub _validate_basedir {
-  my $path = shift || return 0;
-  my $ok = ( -d $path ) && ( -w $path );
-  &_log_error("The directory does not exist or is not writable -- $path"),
-    &_log_error( "Required option missing: --basedir", 64 )
-    unless $ok;
-
-  return $ok;
-}
-
-sub _log {
-  my $level = shift;
-  my $msg = join( ' ', @_ );
-
-  my $syslog_level = LOG_INFO;
-  $syslog_level = LOG_DEBUG   if $level eq 'debug';
-  $syslog_level = LOG_WARNING if $level eq 'warn';
-  $syslog_level = LOG_ERR     if $level eq 'error';
-
-  openlog( $0, 'pid', LOG_USER );
-  syslog( $syslog_level, "[$level] $msg" );
-  closelog();
-
-  print "[$level] $msg\n" unless $opt->{daemon};
-  return 1;
-}
-
-sub _log_debug {
-  return unless $opt->{debug};
-  return &_log( 'debug', @_ );
-}
-
-sub _log_error {
-  my ( $msg, $exit ) = @_;
-  &_log( 'error', $msg );
-  exit $exit if $exit;
-}
-
-sub _log_info {
-  return &_log( 'info', @_ );
-}
-
-sub _log_warn {
-  return &_log( 'warn', @_ );
 }
 
 sub _get_lastrestore {
@@ -462,7 +410,7 @@ sub start {
     _unauthorized_abort() if $_abort;
 
     # here we go.
-    &_log_info("processing: ${\$file->{path}}");
+    $util->log_info("processing: ${\$file->{path}}");
 
     my $destination_file =
       $opt->{basedir}
@@ -486,7 +434,7 @@ sub start {
       && ( $file->{etag} eq file_md5_hex($destination_file) )
       && ( $file->{size} == -s $destination_file ) )
     {
-      &_log_info(
+      $util->log_info(
         qq{The file "$destination_file" already exists in the filesystem.});
       next;
     }
@@ -495,7 +443,7 @@ sub start {
 
     _mkdir_p($basedir) unless -d $basedir;
 
-    &_log_info("Downloading to $destination_file ...");
+    $util->log_info("Downloading to $destination_file ...");
 
     {
       $pm->start and next;
@@ -517,9 +465,9 @@ sub start {
 
         catch { $error = $_; sleep(3); };
         if ($error) {
-          &_log_warn(
+          $util->log_warn(
             "Error fetching ${\$file->{path}} trying again... $attempt");
-          &_log_warn("\t\t$error");
+          $util->log_warn("\t\t$error");
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
@@ -531,8 +479,8 @@ sub start {
   $pm->wait_all_children;
 
   my $end = time();
-  &_log_info("*\n*\n*\n* Started: $start");
-  &_log_info("* Completed: $end");
+  $util->log_info("*\n*\n*\n* Started: $start");
+  $util->log_info("* Completed: $end");
 }
 
 sub _process_metadata {
@@ -603,7 +551,7 @@ sub _send_request {
 sub _make_control_file {
   my $suffix = shift;
   my $base   = md5_hex( $node_key . $partner_key . $path );
-  return "$b_datum_dir/$base.$suffix";
+  return join('/', BASE_DIR, "$base.$suffix");
 }
 sub _filename_cache_version {
   join( '.', shift, 'version' );
@@ -642,7 +590,7 @@ sub _write_cache {
     keys %cache;
 
   # $cache_file->close;
-  &_log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 
 sub lock {

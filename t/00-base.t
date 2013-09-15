@@ -3,10 +3,11 @@
 use strict;
 use warnings;
 
-use Test::More tests => 1;
+use Test::More tests => 2;
 
 BEGIN {
     use_ok("bdatum::Util");
+    use_ok("bdatum::Constants");
 }
 
 diag("Testing all used modules");

@@ -3,7 +3,15 @@ package bdatum::Util;
 
 use strict;
 use warnings;
-use Sys::Syslog qw(:standard :macros);
+
+use Module::Load::Conditional qw(can_load);
+
+# Yes, Fedora don't have any workaround for syslog.
+our $can_syslog = 0;
+if (can_load(modules => { 'Sys::Syslog' => undef })) {
+    use Sys::Syslog qw(:standard :macros);
+    $can_syslog = 1;
+}
 
 sub new {
     my $class = shift;
@@ -19,9 +27,19 @@ sub disable_log {
     shift->{_disable_log} = 1;
 }
 
+sub set_debug {
+    my ($self, $value ) = @_;
+    $self->{_debug} = $value;
+}
+
+sub set_daemon {
+    my ($self, $value ) = @_;
+    $self->{_daemon} = $value;
+}
+
 sub validate_key {
     my $self = shift;
-    my $key = shift || &_log_error( "Required option missing.", 64 );
+    my $key = shift || $self->log_error( "Required option missing.", 64 );
     my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
     $self->log_error("The key must be [a-zA-Z0-9]{20} -- $key") unless $val;
     return $val;
@@ -35,12 +53,30 @@ sub validate_path {
     return $val;
 }
 
+sub validate_basedir {
+    my $self = shift;
+    my $path = shift || return 0;
+    my $ok = ( -d $path ) && ( -w $path );
+   
+    if (!$ok) {
+        $self->log_error
+            ("The directory does not exist or is not writable -- $path");
+        $self->log_error( "Required option missing: --basedir", 64 );
+    }
+
+    return $ok;
+}
+
 sub _log {
     my $self = shift;
     return if $self->{_disable_log};
 
     my $level = shift;
     my $msg = join( ' ', @_ );
+
+    print "[$level] $msg\n" unless $self->{_daemon};
+
+    return unless $can_syslog;
 
     my $syslog_level = LOG_INFO;
     $syslog_level = LOG_DEBUG   if $level eq 'debug';
@@ -51,7 +87,6 @@ sub _log {
     syslog( $syslog_level, "[$level] $msg" );
     closelog();
 
-    print "[$level] $msg\n" unless $self->{_daemon};
     return 1;
 }
 
