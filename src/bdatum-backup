@@ -3,7 +3,6 @@ use strict;
 use warnings qw(FATAL utf8);
 use open qw(:std :utf8);
 use Carp;
-use Sys::Syslog qw(:standard :macros);
 
 use File::Next;
 use File::stat;
@@ -36,6 +35,15 @@ use Try::Tiny;
 use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
+
+use Module::Load::Conditional qw(can_load);
+
+# Yes, Fedora don't have any workaround for syslog.
+our $can_syslog = 0;
+if (can_load(modules => { 'Sys::Syslog' => undef })) {
+    use Sys::Syslog qw(:standard :macros);
+    $can_syslog = 1;
+}
 
 use version; our $VERSION = qv('0.23'); # same line, keep backcompat with older MakeMaker
 
@@ -479,6 +487,10 @@ sub _validate_path {
 sub _log {
   my $level = shift;
   my $msg = join( ' ', @_ );
+ 
+  print "[$level] $msg\n" unless $opt->{daemon};
+  
+  return unless $can_syslog;
 
   my $syslog_level = LOG_INFO;
   $syslog_level = LOG_DEBUG   if $level eq 'debug';
@@ -489,7 +501,6 @@ sub _log {
   syslog( $syslog_level, "[$level] $msg" );
   closelog();
 
-  print "[$level] $msg\n" unless $opt->{daemon};
   return 1;
 }
 

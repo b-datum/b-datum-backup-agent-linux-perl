@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker 6.76;
 
 WriteMakefile(
   NAME       => 'bdatum-backup',
-  VERSION    => '0.23',
+  VERSION    => '0.23', # dh-make-perl, we can't use VERSION_FROM.
   ABSTRACT   => 'Provides tools for backup and restore files with b-datum.com',
   LICENSE    => 'GPLv3',
   EXE_FILES  => [ 'bin/bdatum-backup', 'bin/bdatum-restore', 'bin/bdatum-config' ],
