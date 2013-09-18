@@ -125,3 +125,5 @@ Try/Tiny.pm
 overload.pm
 bdatum/Constants.pm
 bdatum/Util.pm
+Module/Load.pm
+Module/Load/Conditional.pm
