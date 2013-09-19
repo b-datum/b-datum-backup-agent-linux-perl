@@ -556,46 +556,6 @@ sub _send_request {
 
 }
 
-sub _filename_cache_version {
-  join( '.', shift, 'version' );
-}
-
-sub _update_cache_version {
-  my $filename = shift;
-  my $fh = IO::File->new( $filename, 'w', ':unix' )
-    or die "Cannot open $filename";
-  print $fh $VERSION;
-}
-
-sub _read_cache_version {
-  my $filename = shift;
-  return qv(0) unless -r $filename;
-  my $content = do { local ( @ARGV, $/ ) = $filename; <> };
-  return $content if qv($content)->is_qv;
-  return qv(0);
-}
-
-sub _write_cache {
-  my (%cache)            = @_;
-  my $t                  = time;
-  my $cache_file         = $util->make_control_file('cache');
-  my $cache_file_version = &_filename_cache_version($cache_file);
-  &_update_cache_version($cache_file_version);
-
-  open( my $fh, '>:unix', $cache_file )
-    or die "Cannot open $cache_file";
-
-  print {$fh}
-    map {
-    my $attrs = $cache{$_};
-    Encode::encode_utf8( join( q{,}, $_, @$attrs ) . "\n" );
-    }
-    keys %cache;
-
-  # $cache_file->close;
-  $util->log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
-}
-
 sub lock {
   my ($fh) = @_;
   flock( $fh, LOCK_EX ) or die "Cannot lock file - $!\n";
