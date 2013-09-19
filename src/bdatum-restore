@@ -306,6 +306,8 @@ sub options {
 
   $util->set_partner_key($partner_key);
   $util->set_node_key($node_key);
+  $util->set_path($path);
+
 }
 
 sub restore {

@@ -3,6 +3,7 @@ package bdatum::Util;
 
 use strict;
 use warnings;
+use Digest::MD5 qw(md5_hex);
 
 use bdatum::Constants ':all';
 use Module::Load::Conditional qw(can_load);
@@ -48,6 +49,12 @@ sub set_partner_key {
     $self->{partner_key} = $value;
 }
 
+sub set_path {
+    my ($self, $value ) = @_;
+    $self->{path} = $value;
+}
+
+
 sub validate_key {
     my $self = shift;
     my $key = shift || $self->log_error( "Required option missing.", 64 );
@@ -81,11 +88,12 @@ sub validate_basedir {
 sub make_control_file {
     my ($self, $suffix) = @_;
     
-    if (!$self->{node_key} or !$self->{partner_key}) {
-        $self->log_error("We need node_key and partner_key to make control file for $suffix", 64);
+    if (!$self->{node_key} or !$self->{partner_key} or !$self->{path}) {
+        $self->log_error("Please, set the path, node_key and partner_key to make control file for $suffix", 64);
+        return;
     }
 
-    my $base   = md5_hex( $self->{node_key} . $self->{partner_key} . $path );
+    my $base   = md5_hex( $self->{node_key} . $self->{partner_key} . $self->{path} );
     return join('/', BASE_DIR, "$base.$suffix");
 }
 
@@ -121,6 +129,7 @@ sub log_debug {
 sub log_error {
     my ( $self, $msg, $exit ) = @_;
     $self->_log( 'error', $msg );
+    return if $self->{_disable_log};
     exit $exit if $exit;
 }
 
