@@ -169,7 +169,6 @@ Usage: $app_name [options] [...]
     -n,--node-key          node key
     -p,--partner-key       partner key
 
-    -k,--nodelete          don't remove in remote storage files deleted
     -w,--workers           number of workers (default: 5)
     -d,--daemon            Daemon mode
     -c,--config            config file
@@ -206,7 +205,6 @@ sub options {
     "node-key|n=s"    => \$opt->{node_key},
     "partner-key|p=s" => \$opt->{partner_key},
 
-    "nodelete|k"        => \$opt->{nodelete},
     "workers|w"         => \$opt->{workers},
     "daemon|d"          => \$opt->{daemon},
     "config|c=s"        => \$opt->{config},
