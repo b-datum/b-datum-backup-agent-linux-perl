@@ -25,7 +25,7 @@ ok($util->set_partner_key('12345678901234567890'), "Set partner key to 123456789
 ok($util->set_node_key('12345678901234567890'), "Set node key to 12345678901234567890");
 ok($util->set_path('/test'), "Set path for /test");
 
-ok($util->make_control_file('foo'), "Make controle_file with partner key, node key and path");
+is($util->make_control_file('foo'), '/Users/thiagorondon/.b-datum/ffe82773b7640219825e5058f743326f.foo', "Make controle_file with partner key, node key and path");
 
 1;
 

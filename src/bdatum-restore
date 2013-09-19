@@ -569,14 +569,3 @@ sub unlock {
   flock( $fh, LOCK_UN ) or die "Cannot unlock file - $!\n";
 }
 
-sub _stage_file {
-  join( '/', $stage_dir, md5_hex( $node_key . $partner_key . $path . shift ) );
-}
-
-sub _link_to_stage {
-  my $file       = shift;
-  my $stage_file = _stage_file($file);
-  copy( $file, $stage_file ) or die "Copy failed: $!";
-  return $stage_file;
-}
-
