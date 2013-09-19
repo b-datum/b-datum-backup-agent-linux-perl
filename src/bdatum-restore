@@ -49,7 +49,7 @@ our $VERSION = qv('0.23');
 
 our $util = bdatum::Util->new;
 
-our ( $node_key, $partner_key, $path, @blacklist, $manifest );
+our ( $node_key, $partner_key, $path );
 our ( $stage_dir, $configfile, $ua, $pm );
 our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
 
@@ -95,7 +95,6 @@ sub run {
   &options;
   while (1) {
 
-    #    &setup_manifest;
     eval { &restore; };
 
     if ($@) {
@@ -139,11 +138,6 @@ sub _remove_lock_running {
   unlink($lock_file);
   my $lastrestore_file = $util->make_control_file('lastrestore');
   unlink($lastrestore_file) if -e $lastrestore_file;
-}
-
-sub setup_manifest {
-  $manifest = File::Temp->new( UNLINK => 0, )
-    or die q{Couldn't create manifest file};
 }
 
 sub _create_local_dir {
