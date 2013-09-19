@@ -50,7 +50,7 @@ our $VERSION = qv('0.23');
 our $util = bdatum::Util->new;
 
 our ( $node_key, $partner_key, $path );
-our ( $stage_dir, $configfile, $ua, $pm );
+our ( $configfile, $ua, $pm );
 our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
 
 our $opt        = {};
@@ -258,9 +258,7 @@ sub options {
   }
 
   # create base dir
-  $stage_dir = join( '/', BASE_DIR, 'stage' );
   &_create_local_dir(BASE_DIR);
-  &_create_local_dir($stage_dir);
   $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
 
   if ( -r $configfile ) {
