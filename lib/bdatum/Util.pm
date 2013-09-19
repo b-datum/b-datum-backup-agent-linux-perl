@@ -4,6 +4,7 @@ package bdatum::Util;
 use strict;
 use warnings;
 
+use bdatum::Constants ':all';
 use Module::Load::Conditional qw(can_load);
 
 # Yes, Fedora don't have any workaround for syslog.
@@ -37,6 +38,16 @@ sub set_daemon {
     $self->{_daemon} = $value;
 }
 
+sub set_node_key {
+    my ($self, $value ) = @_;
+    $self->{node_key} = $value;
+}
+
+sub set_partner_key {
+    my ($self, $value ) = @_;
+    $self->{partner_key} = $value;
+}
+
 sub validate_key {
     my $self = shift;
     my $key = shift || $self->log_error( "Required option missing.", 64 );
@@ -65,6 +76,17 @@ sub validate_basedir {
     }
 
     return $ok;
+}
+
+sub make_control_file {
+    my ($self, $suffix) = @_;
+    
+    if (!$self->{node_key} or !$self->{partner_key}) {
+        $self->log_error("We need node_key and partner_key to make control file for $suffix", 64);
+    }
+
+    my $base   = md5_hex( $self->{node_key} . $self->{partner_key} . $path );
+    return join('/', BASE_DIR, "$base.$suffix");
 }
 
 sub _log {

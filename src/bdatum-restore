@@ -125,7 +125,7 @@ sub check_alive {
 }
 
 sub _check_already_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   if ( -f $lock_file ) {
     open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
     flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
@@ -135,9 +135,9 @@ sub _check_already_running {
 }
 
 sub _remove_lock_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   unlink($lock_file);
-  my $lastrestore_file = &_make_control_file('lastrestore');
+  my $lastrestore_file = $util->make_control_file('lastrestore');
   unlink($lastrestore_file) if -e $lastrestore_file;
 }
 
@@ -297,6 +297,15 @@ sub options {
   $util->validate_key($partner_key);
   $util->validate_basedir($path);
 
+  if ( !$util->validate_key($node_key)
+    or !$util->validate_key($partner_key)
+    or !$util->validate_path($path) )
+  {
+    $util->log_error( "Required option missing.", 64 );
+  }
+
+  $util->set_partner_key($partner_key);
+  $util->set_node_key($node_key);
 }
 
 sub restore {
@@ -385,14 +394,14 @@ sub _get_files {
 }
 
 sub _get_lastrestore {
-  my $lastrestore_file = &_make_control_file('lastrestore');
+  my $lastrestore_file = $util->make_control_file('lastrestore');
   return unless -e $lastrestore_file;
   my $content = do { local ( @ARGV, $/ ) = $lastrestore_file; <> };
   return $content;
 }
 
 sub _write_lastrestore {
-  my $lastrestore_file = &_make_control_file('lastrestore');
+  my $lastrestore_file = $util->make_control_file('lastrestore');
   open my $fh, '>', $lastrestore_file;
   print $fh time;
   close $fh;
@@ -547,11 +556,6 @@ sub _send_request {
 
 }
 
-sub _make_control_file {
-  my $suffix = shift;
-  my $base   = md5_hex( $node_key . $partner_key . $path );
-  return join('/', BASE_DIR, "$base.$suffix");
-}
 sub _filename_cache_version {
   join( '.', shift, 'version' );
 }
@@ -574,7 +578,7 @@ sub _read_cache_version {
 sub _write_cache {
   my (%cache)            = @_;
   my $t                  = time;
-  my $cache_file         = &_make_control_file('cache');
+  my $cache_file         = $util->make_control_file('cache');
   my $cache_file_version = &_filename_cache_version($cache_file);
   &_update_cache_version($cache_file_version);
 

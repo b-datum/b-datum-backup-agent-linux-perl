@@ -138,7 +138,7 @@ sub check_alive {
 }
 
 sub _check_already_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   if ( -f $lock_file ) {
     open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
     flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
@@ -148,9 +148,9 @@ sub _check_already_running {
 }
 
 sub _remove_lock_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   unlink($lock_file);
-  my $lastbackup_file = &_make_control_file('lastbackup');
+  my $lastbackup_file = $util->make_control_file('lastbackup');
   unlink($lastbackup_file) if -e $lastbackup_file;
 }
 
@@ -326,6 +326,10 @@ sub options {
   {
     $util->log_error( "Required option missing.", 64 );
   }
+
+  $util->set_partner_key($partner_key);
+  $util->set_node_key($node_key);
+
 }
 
 sub backup {
@@ -462,7 +466,7 @@ sub is_folder_empty {
 }
 
 sub _get_lastbackup {
-  my $lastbackup_file = &_make_control_file('lastbackup');
+  my $lastbackup_file = $util->make_control_file('lastbackup');
   return unless -e $lastbackup_file;
   my $content = do { local ( @ARGV, $/ ) = $lastbackup_file; <> };
   return $content;
@@ -470,7 +474,7 @@ sub _get_lastbackup {
 
 sub _write_lastbackup {
   my $file            = shift;
-  my $lastbackup_file = &_make_control_file('lastbackup');
+  my $lastbackup_file = $util->make_control_file('lastbackup');
   open my $fh, '>', $lastbackup_file;
   print $fh $file;
   close $fh;
@@ -491,7 +495,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
     # fast way to do backup in the "second-first job",
     # if the first-first backup not finish completely.
-    my $cache_file = &_make_control_file('cache');
+    my $cache_file = $util->make_control_file('cache');
     if ( !-e $cache_file && $lastbackup_run ) {
       if ( $lastbackup_file eq $file ) {
         $lastbackup_run = 0;
@@ -896,18 +900,12 @@ sub _delete_files {
   $pm->wait_all_children;
 }
 
-sub _make_control_file {
-  my $suffix = shift;
-  my $base   = md5_hex( $node_key . $partner_key . $path );
-  return join('/', BASE_DIR, "$base.$suffix");
-}
-
 sub _read_cache {
   #
   # Slurp cache File
   #
 
-  my $cache_file = &_make_control_file('cache');
+  my $cache_file = $util->make_control_file('cache');
   my %cache;
   my $cache_file_version = &_filename_cache_version($cache_file);
 
@@ -975,7 +973,7 @@ sub _read_cache_version {
 sub _write_cache {
   my (%cache)            = @_;
   my $t                  = time;
-  my $cache_file         = &_make_control_file('cache');
+  my $cache_file         = $util->make_control_file('cache');
   my $cache_file_version = &_filename_cache_version($cache_file);
   &_update_cache_version($cache_file_version);
 
