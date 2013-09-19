@@ -51,7 +51,7 @@ our $util = bdatum::Util->new;
 
 our ( $node_key, $partner_key, $path );
 our ( $configfile, $ua, $pm );
-our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
+our ( $usage, $run_lock_fh );
 
 our $opt        = {};
 our $parent_pid = $$;
