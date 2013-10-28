@@ -247,6 +247,9 @@ sub options {
     "persistent_time=i" => \$opt->{persistent_time},
     "retry_time=i"      => \$opt->{retry_time},
 
+    "use_own_storage"   => \$opt->{use_own_storage},
+    "storage_config=s"  => \$opt->{aws_config},
+
     "proxy_schema=s"   => \$opt->{proxy_schema},
     "proxy_server=s"   => \$opt->{proxy_server},
     "proxy_username=s" => \$opt->{proxy_username},
