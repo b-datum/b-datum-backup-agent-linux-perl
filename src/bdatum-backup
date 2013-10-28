@@ -36,6 +36,8 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
+use Net::Amazon::S3;
+
 use bdatum::Constants ':all';
 use bdatum::Util;
 
@@ -63,9 +65,9 @@ our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
 our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE );
 
 our (
-  $aws_config,       $aws_configfile,        $aws_access_key_id,
-  $aws_storage_type, $aws_access_key_secret, $aws_container,
-  $aws_expiry_max_version
+  $aws_config,             $aws_configfile,        $aws_access_key_id,
+  $aws_storage_type,       $aws_access_key_secret, $aws_container,
+  $aws_expiry_max_version, $aws_storage_backend
 );
 
 our $opt        = {};
@@ -331,12 +333,26 @@ sub options {
 
     my $config = Config::Any::INI->load($aws_configfile);
 
-    $aws_storage_type       = $config->{storage_type};
-    $aws_access_key_id      = $config->{access_key_id};
-    $aws_access_key_secret  = $config->{access_key_secret};
-    $aws_container          = $config->{container};
+    $aws_storage_type = $config->{storage_type} || 's3';
+
+    $aws_access_key_id = $config->{access_key_id}
+      or $util->log_error( "Missing access_key_id", 78 ), exit(0);
+    $aws_access_key_secret = $config->{access_key_secret}
+      or $util->log_error( "Missing access_key_secret", 78 ), exit(0);
+    $aws_container = $config->{container}
+      or $util->log_error( "Missing container", 78 ), exit(0);
     $aws_expiry_max_version = $config->{expiry_max_version};
 
+    if ( $aws_storage_type =~ /^s3$/i ) {
+      $aws_storage_backend = Net::Amazon::S3->new(
+        {
+          aws_access_key_id     => $aws_access_key_id,
+          aws_secret_access_key => $aws_access_key_secret,
+          retry                 => 1,
+        }
+      );
+      $aws_storage_backend->set_bucket($aws_container);
+    }
   }
 
   # skipping staging dir by blacklist
@@ -710,6 +726,7 @@ sub send_file {
     return _send_default(@_);
   }
   else {
+    return _send_default(@_) if $opt->{use_own_storage};
     return _send_multipart(@_);
   }
 
@@ -727,6 +744,48 @@ sub _send_manifest {
     Etag    => $etag,
     Content => scalar read_file( $manifest->filename );
   my $res = _send_request($req);
+}
+
+sub _aws_backend_send_multipart {
+  my ( $file, $attrs, $changes ) = @_;
+
+  my $client = Net::Amazon::S3::Client->new( s3 => $aws_storage_backend );
+
+  my $object = $client->object( key => $file );
+
+  my $sfile = $changes->{stage_file};
+
+  my $fh = IO::File->new( $sfile, 'r', ':unix' )
+    or die "Cannot open $file";
+
+  my $upload_id = $object->initiate_multipart_upload;
+
+  my $i = 1;
+  my $buffer;
+  my @parts;
+  my @etags;
+
+  while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
+    $util->log_info("sending part $i of $file");
+
+    push @etags, md5_hex($buffer);
+    push @parts, $i;
+
+    my $response = $object->put_part(
+      upload_id   => $upload_id,
+      part_number => $i++,
+      value       => $buffer
+    );
+
+    $util->log_info("finish upload part $i of $file.");
+  }
+
+  $fh->close;
+  $object->complete_multipart_upload(
+    upload_id    => $upload_id,
+    etags        => \@etags,
+    part_numbers => \@parts
+  );
 }
 
 sub _send_multipart {
@@ -849,6 +908,11 @@ sub _mkdir {
 
 sub _delete {
   my ($file) = @_;
+
+  $aws_storage_backend->add_key( $file, '' )
+    or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr
+    if $opt->{use_own_storage};
+
   my $uri = URI->new(BASE_URL);
   $uri->path('storage');
   $uri->query_form( path => $file );
@@ -873,13 +937,34 @@ sub _send_default {
 
   my $sfile = $changes->{stage_file};
 
+  my %metadata = _get_metadata( $file, $attrs );
+
+  my $metadata_ref = {%metadata};
+
+  if ( $opt->{use_own_storage} ) {
+
+    if ( -s $file < $PART_LIMIT_SIZE ) {
+      $aws_storage_backend->add_key(
+        $file,
+        ( -l $file ? '' : \$sfile ),
+        _make_header($metadata_ref)
+        )
+        or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr;
+    }
+    else {
+      _aws_backend_send_multipart( $file, $attrs, $changes );
+    }
+  }
+
   my $req = POST $uri,
     Content_Type => 'form-data',
     Etag         => $etag,
     Content      => [
-    _get_metadata( $file, $attrs ),
+    %metadata,
     path => "$file",
-    ( !-l $file ? ( value => [$sfile] ) : () )
+    (
+      !-l $file ? ( $opt->{use_own_storage} ? () : ( value => [$sfile] ) ) : ()
+    )
     ];
   _send_request($req);
 
@@ -1047,5 +1132,30 @@ sub _link_to_stage {
   my $stage_file = _stage_file($file);
   copy( $file, $stage_file ) or die "Copy failed: $!";
   return $stage_file;
+}
+
+sub _make_metaname {
+  my $self = shift;
+  return join( '-', 'x-amz-meta-b-datum', @_ );
+}
+
+sub _make_header () {
+  my ( $self, $hash, $key, $version ) = @_;
+  $hash = keys( %{$hash} ) ? $hash : {};
+
+  foreach my $item ( keys %{$hash} ) {
+    next if $item =~ /^content/;
+    my $value = encode( 'MIME-Header', delete $hash->{$item} );
+    $value =~ s/\r?\n//g;
+    $hash->{ $self->_make_metaname($item) } = $value;
+
+  }
+
+  my $hash_version = {
+    ( $version ? ( $self->_make_metaname('version') => $version ) : () ),
+    'content-disposition' => basename($key)
+  };
+
+  return { %$hash, %$hash_version };
 }
 
