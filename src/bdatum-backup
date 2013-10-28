@@ -947,7 +947,7 @@ sub _send_default {
 
   my %metadata = _get_metadata( $file, $attrs );
 
-  my $metadata_ref = {%metadata};
+  my $metadata_ref = +{%metadata};
 
   if ( $opt->{use_own_storage} ) {
 
@@ -957,7 +957,7 @@ sub _send_default {
       $bucket->add_key(
         $file,
         ( -l $file ? '' : \$sfile ),
-        _make_header($metadata_ref, $file)
+        _make_header( $metadata_ref, $file )
         )
         or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr;
     }
@@ -1145,24 +1145,23 @@ sub _link_to_stage {
 }
 
 sub _make_metaname {
-  my $self = shift;
   return join( '-', 'x-amz-meta-b-datum', @_ );
 }
 
 sub _make_header () {
-  my ( $self, $hash, $key, $version ) = @_;
+  my ( $hash, $key, $version ) = @_;
   $hash = keys( %{$hash} ) ? $hash : {};
 
   foreach my $item ( keys %{$hash} ) {
     next if $item =~ /^content/;
     my $value = encode( 'MIME-Header', delete $hash->{$item} );
     $value =~ s/\r?\n//g;
-    $hash->{ $self->_make_metaname($item) } = $value;
+    $hash->{ _make_metaname($item) } = $value;
 
   }
 
   my $hash_version = {
-    ( $version ? ( $self->_make_metaname('version') => $version ) : () ),
+    ( $version ? ( _make_metaname('version') => $version ) : () ),
     'content-disposition' => basename($key)
   };
 
