@@ -247,8 +247,8 @@ sub options {
     "persistent_time=i" => \$opt->{persistent_time},
     "retry_time=i"      => \$opt->{retry_time},
 
-    "use_own_storage"   => \$opt->{use_own_storage},
-    "storage_config=s"  => \$opt->{aws_config},
+    "use_own_storage"  => \$opt->{use_own_storage},
+    "storage_config=s" => \$opt->{aws_config},
 
     "proxy_schema=s"   => \$opt->{proxy_schema},
     "proxy_server=s"   => \$opt->{proxy_server},
@@ -354,7 +354,7 @@ sub options {
           retry                 => 1,
         }
       );
-      $aws_storage_backend->set_bucket($aws_container);
+      $aws_storage_backend->bucket($aws_container);
     }
   }
 
@@ -912,9 +912,14 @@ sub _mkdir {
 sub _delete {
   my ($file) = @_;
 
-  $aws_storage_backend->add_key( $file, '' )
-    or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr
-    if $opt->{use_own_storage};
+  if ( $opt->{use_own_storage} ) {
+    my $bucket = $aws_storage_backend->bucket($aws_container);
+
+    $bucket->add_key( $file, '' )
+      or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr
+      if $opt->{use_own_storage};
+
+  }
 
   my $uri = URI->new(BASE_URL);
   $uri->path('storage');
@@ -946,8 +951,10 @@ sub _send_default {
 
   if ( $opt->{use_own_storage} ) {
 
+    my $bucket = $aws_storage_backend->bucket($aws_container);
+
     if ( -s $file < $PART_LIMIT_SIZE ) {
-      $aws_storage_backend->add_key(
+      $bucket->add_key(
         $file,
         ( -l $file ? '' : \$sfile ),
         _make_header($metadata_ref)
