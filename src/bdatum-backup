@@ -957,7 +957,7 @@ sub _send_default {
       $bucket->add_key(
         $file,
         ( -l $file ? '' : \$sfile ),
-        _make_header($metadata_ref)
+        _make_header($metadata_ref, $file)
         )
         or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr;
     }
