@@ -1,3 +1,4 @@
+#!perl
 use utf8;
 use strict;
 use warnings qw(FATAL utf8);
@@ -60,6 +61,12 @@ my %metadata_map = (
 our ( $node_key,  $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
 our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE );
+
+our (
+  $aws_config,       $aws_configfile,        $aws_access_key_id,
+  $aws_storage_type, $aws_access_key_secret, $aws_container,
+  $aws_expiry_max_version
+);
 
 our $opt        = {};
 our $parent_pid = $$;
@@ -193,6 +200,10 @@ Usage: bdatum-backup [options] [...]
     -w,--workers           number of workers (default: 5)
     -d,--daemon            Daemon mode
     -c,--config            config file
+
+    --use-own-storage      use your own storage backend (default config: /etc/amazon.conf)
+    --storage-config       specify config for storage backend
+
     --profile              load profile
     --persistent           persistent mode
     --persistent_time      time in seconds for run again the scan in directory to do backup (default: 180)
@@ -250,7 +261,7 @@ sub options {
   &show_version if $opt->{version};
   &show_help    if $opt->{help};
 
-  $util->set_debug(1) if $opt->{debug};
+  $util->set_debug(1)  if $opt->{debug};
   $util->set_daemon(1) if $opt->{daemon};
 
   $0 = "[bdatum-backup]";
@@ -309,8 +320,27 @@ sub options {
     } keys %{ $config->{blacklist} || {} };
   }
 
+  $aws_configfile = $opt->{aws_config} || '/etc/amazon.conf';
+
+  if ( $opt->{use_own_storage} && -r $aws_configfile ) {
+    my $st = stat $aws_configfile;
+    my $mode = sprintf( '%04o', $st->mode & 07777 );
+    if ( $mode ne '0400' ) {
+      $util->log_error( "Please run 'chmod 0400 $aws_configfile'", 78 );
+    }
+
+    my $config = Config::Any::INI->load($aws_configfile);
+
+    $aws_storage_type       = $config->{storage_type};
+    $aws_access_key_id      = $config->{access_key_id};
+    $aws_access_key_secret  = $config->{access_key_secret};
+    $aws_container          = $config->{container};
+    $aws_expiry_max_version = $config->{expiry_max_version};
+
+  }
+
   # skipping staging dir by blacklist
-  my $b_datum_dir = BASE_DIR; # PBP - Bareword constants can't be interpolated.
+  my $b_datum_dir = BASE_DIR;  # PBP - Bareword constants can't be interpolated.
   push( @blacklist, qr/^$b_datum_dir/, qr/^$stage_dir/ );
 
   # for linux
@@ -368,13 +398,14 @@ sub backup {
     $ua->proxy( [$scheme], $proxy );
 
     # For HTTPS
-    $proxy                             = "$scheme://$server";
-    $ENV{HTTPS_PROXY}                  = $proxy;
-    $ENV{HTTPS_PROXY_USERNAME}         = $username;
-    $ENV{HTTPS_PROXY_PASSWORD}         = $password;
-    $ENV{HTTP_PROXY}                   = $proxy;
-    $ENV{HTTP_PROXY_USERNAME}          = $username;
-    $ENV{HTTP_PROXY_PASSWORD}          = $password;
+    $proxy                     = "$scheme://$server";
+    $ENV{HTTPS_PROXY}          = $proxy;
+    $ENV{HTTPS_PROXY_USERNAME} = $username;
+    $ENV{HTTPS_PROXY_PASSWORD} = $password;
+    $ENV{HTTP_PROXY}           = $proxy;
+    $ENV{HTTP_PROXY_USERNAME}  = $username;
+    $ENV{HTTP_PROXY_PASSWORD}  = $password;
+
     #$Net::HTTPS::SSL_SOCKET_CLASS      = "Net::SSL";
     $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
     $ua->env_proxy(1);
@@ -425,7 +456,8 @@ sub _get_files {
           && return;
 
         -b $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is a block special file")
+          && $util->log_warn(
+          "SKIPPING: $File::Next::name is a block special file")
           && return;
 
         -p $File::Next::name
@@ -438,7 +470,8 @@ sub _get_files {
           && return;
 
         -t $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is is opened to a tty")
+          && $util->log_warn(
+          "SKIPPING: $File::Next::name is is opened to a tty")
           && return;
 
              !-R $File::Next::name
@@ -940,7 +973,8 @@ sub _read_cache {
 
     $cache{$file} = $attrs;
   }
-  $util->log_info( 'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info(
+    'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 
   close($fh);
   undef($fh);
@@ -989,7 +1023,8 @@ sub _write_cache {
     keys %cache;
 
   # $cache_file->close;
-  $util->log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info(
+    '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 
 sub lock {
