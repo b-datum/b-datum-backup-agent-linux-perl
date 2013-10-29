@@ -754,7 +754,10 @@ sub _aws_backend_send_multipart {
 
   my $client = Net::Amazon::S3::Client->new( s3 => $aws_storage_backend );
 
-  my $object = $client->object( key => $file );
+  my $path = $file;
+  $path =~ s/^\///;
+
+  my $object = $client->object( key => $path );
 
   my $sfile = $changes->{stage_file};
 
@@ -954,8 +957,10 @@ sub _send_default {
     my $bucket = $aws_storage_backend->bucket($aws_container);
 
     if ( -s $file < $PART_LIMIT_SIZE ) {
+      my $path = $file;
+      $path =~ s/^\///;
       $bucket->add_key(
-        $file,
+        $path,
         ( -l $file ? '' : \$sfile ),
         _make_header( $metadata_ref, $file )
         )
