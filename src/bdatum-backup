@@ -757,7 +757,8 @@ sub _aws_backend_send_multipart {
   my $path = $file;
   $path =~ s/^\///;
 
-  my $object = $client->object( key => $path );
+  my $bucket = $client->bucket( name => $aws_container );
+  my $object = $bucket->object( key => $path );
 
   my $sfile = $changes->{stage_file};
 
