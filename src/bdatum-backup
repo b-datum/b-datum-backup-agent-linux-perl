@@ -943,6 +943,7 @@ sub _send_default {
   $uri->path('/storage');
 
   my $etag = -l $file ? md5_hex('') : $attrs->[ETAG];
+  my $_size = -l $file ? 0: -s $file;
 
   return 1
     if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
@@ -978,6 +979,7 @@ sub _send_default {
     Content      => [
     %metadata,
     path => "$file",
+    _size => $_size,
     (
       !-l $file ? ( $opt->{use_own_storage} ? () : ( value => [$sfile] ) ) : ()
     )
