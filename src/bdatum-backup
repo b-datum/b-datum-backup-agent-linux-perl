@@ -36,7 +36,13 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
-use Net::Amazon::S3;
+our $CAN_DO_S3 = 0;
+eval { 
+    require Net::Amazon::S3;
+    Net::Amazon::S3->import;
+    $CAN_DO_S3 = 1;
+    1;
+};
 
 use bdatum::Constants ':all';
 use bdatum::Util;
@@ -110,6 +116,12 @@ sub pairwise (&\@\@) {
 sub _unauthorized_abort {
   $util->log_error("*** ERROR: 401 http unauthorized");
   exit 77;    # EX_NOPERM
+}
+
+sub _check_if_has_s3 {
+    return if $CAN_DO_S3;
+    $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
+    exit 1;
 }
 
 &run;
@@ -327,6 +339,8 @@ sub options {
 
   $aws_configfile = $opt->{aws_config} || '/etc/amazon.conf';
 
+  &_check_if_has_s3() if $opt->{use_own_storage};
+
   if ( $opt->{use_own_storage} && -r $aws_configfile ) {
     my $st = stat $aws_configfile;
     my $mode = sprintf( '%04o', $st->mode & 07777 );
@@ -347,6 +361,7 @@ sub options {
     $aws_expiry_max_version = $config->{expiry_max_version};
 
     if ( $aws_storage_type =~ /^s3$/i ) {
+      &_check_if_has_s3;
       $aws_storage_backend = Net::Amazon::S3->new(
         {
           aws_access_key_id     => $aws_access_key_id,
