@@ -310,7 +310,17 @@ sub options {
   $stage_dir = join( '/', BASE_DIR, 'stage' );
   &_create_local_dir(BASE_DIR);
   &_create_local_dir($stage_dir);
-  $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
+
+  # get config file.
+  $configfile = $opt->{config};
+
+  if (!$configfile and -r '/etc/bdatum/backup.conf') {
+    $configfile = '/etc/bdatum/backup.conf';
+  }
+
+  if (!$configfile and $ENV{'HOME'}) {
+    $configfile = join('/', $ENV{'HOME'}, '.b-datum', 'backup.conf');
+  }
 
   if ( -r $configfile ) {
     my $st = stat $configfile;
