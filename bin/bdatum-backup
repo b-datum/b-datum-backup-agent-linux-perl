@@ -33285,7 +33285,9 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
   
   use strict;
   use warnings;
+  use Digest::MD5 qw(md5_hex);
   
+  use bdatum::Constants ':all';
   use Module::Load::Conditional qw(can_load);
   
   # Yes, Fedora don't have any workaround for syslog.
@@ -33319,6 +33321,22 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
       $self->{_daemon} = $value;
   }
   
+  sub set_node_key {
+      my ($self, $value ) = @_;
+      $self->{node_key} = $value;
+  }
+  
+  sub set_partner_key {
+      my ($self, $value ) = @_;
+      $self->{partner_key} = $value;
+  }
+  
+  sub set_path {
+      my ($self, $value ) = @_;
+      $self->{path} = $value;
+  }
+  
+  
   sub validate_key {
       my $self = shift;
       my $key = shift || $self->log_error( "Required option missing.", 64 );
@@ -33347,6 +33365,18 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
       }
   
       return $ok;
+  }
+  
+  sub make_control_file {
+      my ($self, $suffix) = @_;
+      
+      if (!$self->{node_key} or !$self->{partner_key} or !$self->{path}) {
+          $self->log_error("Please, set the path, node_key and partner_key to make control file for $suffix", 64);
+          return;
+      }
+  
+      my $base   = md5_hex( $self->{node_key} . $self->{partner_key} . $self->{path} );
+      return join('/', BASE_DIR, "$base.$suffix");
   }
   
   sub _log {
@@ -33381,6 +33411,7 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
   sub log_error {
       my ( $self, $msg, $exit ) = @_;
       $self->_log( 'error', $msg );
+      return if $self->{_disable_log};
       exit $exit if $exit;
   }
   
@@ -33418,6 +33449,7 @@ unshift @INC, sub {
 
 } # END OF FATPACK CODE
 
+#!perl
 use utf8;
 use strict;
 use warnings qw(FATAL utf8);
@@ -33455,6 +33487,14 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
+our $CAN_DO_S3 = 0;
+eval { 
+    require Net::Amazon::S3;
+    Net::Amazon::S3->import;
+    $CAN_DO_S3 = 1;
+    1;
+};
+
 use bdatum::Constants ':all';
 use bdatum::Util;
 
@@ -33480,6 +33520,12 @@ my %metadata_map = (
 our ( $node_key,  $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
 our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE );
+
+our (
+  $aws_config,             $aws_configfile,        $aws_access_key_id,
+  $aws_storage_type,       $aws_access_key_secret, $aws_container,
+  $aws_expiry_max_version, $aws_storage_backend
+);
 
 our $opt        = {};
 our $parent_pid = $$;
@@ -33523,6 +33569,12 @@ sub _unauthorized_abort {
   exit 77;    # EX_NOPERM
 }
 
+sub _check_if_has_s3 {
+    return if $CAN_DO_S3;
+    $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
+    exit 1;
+}
+
 &run;
 
 sub run {
@@ -33558,7 +33610,7 @@ sub check_alive {
 }
 
 sub _check_already_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   if ( -f $lock_file ) {
     open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
     flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
@@ -33568,9 +33620,9 @@ sub _check_already_running {
 }
 
 sub _remove_lock_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   unlink($lock_file);
-  my $lastbackup_file = &_make_control_file('lastbackup');
+  my $lastbackup_file = $util->make_control_file('lastbackup');
   unlink($lastbackup_file) if -e $lastbackup_file;
 }
 
@@ -33613,6 +33665,10 @@ Usage: bdatum-backup [options] [...]
     -w,--workers           number of workers (default: 5)
     -d,--daemon            Daemon mode
     -c,--config            config file
+
+    --use_own_storage      use your own storage backend (default config: /etc/amazon.conf)
+    --storage-config       specify config for storage backend
+
     --profile              load profile
     --persistent           persistent mode
     --persistent_time      time in seconds for run again the scan in directory to do backup (default: 180)
@@ -33654,6 +33710,9 @@ sub options {
     "persistent_time=i" => \$opt->{persistent_time},
     "retry_time=i"      => \$opt->{retry_time},
 
+    "use_own_storage"  => \$opt->{use_own_storage},
+    "storage_config=s" => \$opt->{aws_config},
+
     "proxy_schema=s"   => \$opt->{proxy_schema},
     "proxy_server=s"   => \$opt->{proxy_server},
     "proxy_username=s" => \$opt->{proxy_username},
@@ -33670,7 +33729,7 @@ sub options {
   &show_version if $opt->{version};
   &show_help    if $opt->{help};
 
-  $util->set_debug(1) if $opt->{debug};
+  $util->set_debug(1)  if $opt->{debug};
   $util->set_daemon(1) if $opt->{daemon};
 
   $0 = "[bdatum-backup]";
@@ -33702,7 +33761,17 @@ sub options {
   $stage_dir = join( '/', BASE_DIR, 'stage' );
   &_create_local_dir(BASE_DIR);
   &_create_local_dir($stage_dir);
-  $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
+
+  # get config file.
+  $configfile = $opt->{config};
+
+  if (!$configfile and -r '/etc/bdatum/backup.conf') {
+    $configfile = '/etc/bdatum/backup.conf';
+  }
+
+  if (!$configfile and $ENV{'HOME'}) {
+    $configfile = join('/', $ENV{'HOME'}, '.b-datum', 'backup.conf');
+  }
 
   if ( -r $configfile ) {
     my $st = stat $configfile;
@@ -33729,8 +33798,44 @@ sub options {
     } keys %{ $config->{blacklist} || {} };
   }
 
+  $aws_configfile = $opt->{aws_config} || '/etc/amazon.conf';
+
+  &_check_if_has_s3() if $opt->{use_own_storage};
+
+  if ( $opt->{use_own_storage} && -r $aws_configfile ) {
+    my $st = stat $aws_configfile;
+    my $mode = sprintf( '%04o', $st->mode & 07777 );
+    if ( $mode ne '0400' ) {
+      $util->log_error( "Please run 'chmod 0400 $aws_configfile'", 78 );
+    }
+
+    my $config = Config::Any::INI->load($aws_configfile);
+
+    $aws_storage_type = $config->{storage_type} || 's3';
+
+    $aws_access_key_id = $config->{access_key_id}
+      or $util->log_error( "Missing access_key_id", 78 ), exit(0);
+    $aws_access_key_secret = $config->{access_key_secret}
+      or $util->log_error( "Missing access_key_secret", 78 ), exit(0);
+    $aws_container = $config->{container}
+      or $util->log_error( "Missing container", 78 ), exit(0);
+    $aws_expiry_max_version = $config->{expiry_max_version};
+
+    if ( $aws_storage_type =~ /^s3$/i ) {
+      &_check_if_has_s3;
+      $aws_storage_backend = Net::Amazon::S3->new(
+        {
+          aws_access_key_id     => $aws_access_key_id,
+          aws_secret_access_key => $aws_access_key_secret,
+          retry                 => 1,
+        }
+      );
+      $aws_storage_backend->bucket($aws_container);
+    }
+  }
+
   # skipping staging dir by blacklist
-  my $b_datum_dir = BASE_DIR; # PBP - Bareword constants can't be interpolated.
+  my $b_datum_dir = BASE_DIR;  # PBP - Bareword constants can't be interpolated.
   push( @blacklist, qr/^$b_datum_dir/, qr/^$stage_dir/ );
 
   # for linux
@@ -33746,6 +33851,11 @@ sub options {
   {
     $util->log_error( "Required option missing.", 64 );
   }
+
+  $util->set_partner_key($partner_key);
+  $util->set_node_key($node_key);
+  $util->set_path($path);
+
 }
 
 sub backup {
@@ -33783,13 +33893,14 @@ sub backup {
     $ua->proxy( [$scheme], $proxy );
 
     # For HTTPS
-    $proxy                             = "$scheme://$server";
-    $ENV{HTTPS_PROXY}                  = $proxy;
-    $ENV{HTTPS_PROXY_USERNAME}         = $username;
-    $ENV{HTTPS_PROXY_PASSWORD}         = $password;
-    $ENV{HTTP_PROXY}                   = $proxy;
-    $ENV{HTTP_PROXY_USERNAME}          = $username;
-    $ENV{HTTP_PROXY_PASSWORD}          = $password;
+    $proxy                     = "$scheme://$server";
+    $ENV{HTTPS_PROXY}          = $proxy;
+    $ENV{HTTPS_PROXY_USERNAME} = $username;
+    $ENV{HTTPS_PROXY_PASSWORD} = $password;
+    $ENV{HTTP_PROXY}           = $proxy;
+    $ENV{HTTP_PROXY_USERNAME}  = $username;
+    $ENV{HTTP_PROXY_PASSWORD}  = $password;
+
     #$Net::HTTPS::SSL_SOCKET_CLASS      = "Net::SSL";
     $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
     $ua->env_proxy(1);
@@ -33840,7 +33951,8 @@ sub _get_files {
           && return;
 
         -b $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is a block special file")
+          && $util->log_warn(
+          "SKIPPING: $File::Next::name is a block special file")
           && return;
 
         -p $File::Next::name
@@ -33853,7 +33965,8 @@ sub _get_files {
           && return;
 
         -t $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is is opened to a tty")
+          && $util->log_warn(
+          "SKIPPING: $File::Next::name is is opened to a tty")
           && return;
 
              !-R $File::Next::name
@@ -33882,7 +33995,7 @@ sub is_folder_empty {
 }
 
 sub _get_lastbackup {
-  my $lastbackup_file = &_make_control_file('lastbackup');
+  my $lastbackup_file = $util->make_control_file('lastbackup');
   return unless -e $lastbackup_file;
   my $content = do { local ( @ARGV, $/ ) = $lastbackup_file; <> };
   return $content;
@@ -33890,7 +34003,7 @@ sub _get_lastbackup {
 
 sub _write_lastbackup {
   my $file            = shift;
-  my $lastbackup_file = &_make_control_file('lastbackup');
+  my $lastbackup_file = $util->make_control_file('lastbackup');
   open my $fh, '>', $lastbackup_file;
   print $fh $file;
   close $fh;
@@ -33911,7 +34024,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
     # fast way to do backup in the "second-first job",
     # if the first-first backup not finish completely.
-    my $cache_file = &_make_control_file('cache');
+    my $cache_file = $util->make_control_file('cache');
     if ( !-e $cache_file && $lastbackup_run ) {
       if ( $lastbackup_file eq $file ) {
         $lastbackup_run = 0;
@@ -34092,6 +34205,7 @@ sub send_file {
     return _send_default(@_);
   }
   else {
+    return _send_default(@_) if $opt->{use_own_storage};
     return _send_multipart(@_);
   }
 
@@ -34109,6 +34223,52 @@ sub _send_manifest {
     Etag    => $etag,
     Content => scalar read_file( $manifest->filename );
   my $res = _send_request($req);
+}
+
+sub _aws_backend_send_multipart {
+  my ( $file, $attrs, $changes ) = @_;
+
+  my $client = Net::Amazon::S3::Client->new( s3 => $aws_storage_backend );
+
+  my $path = $file;
+  $path =~ s/^\///;
+
+  my $bucket = $client->bucket( name => $aws_container );
+  my $object = $bucket->object( key => $path );
+
+  my $sfile = $changes->{stage_file};
+
+  my $fh = IO::File->new( $sfile, 'r', ':unix' )
+    or die "Cannot open $file";
+
+  my $upload_id = $object->initiate_multipart_upload;
+
+  my $i = 1;
+  my $buffer;
+  my @parts;
+  my @etags;
+
+  while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
+    $util->log_info("sending part $i of $file");
+
+    push @etags, md5_hex($buffer);
+    push @parts, $i;
+
+    my $response = $object->put_part(
+      upload_id   => $upload_id,
+      part_number => $i++,
+      value       => $buffer
+    );
+
+    $util->log_info("finish upload part $i of $file.");
+  }
+
+  $fh->close;
+  $object->complete_multipart_upload(
+    upload_id    => $upload_id,
+    etags        => \@etags,
+    part_numbers => \@parts
+  );
 }
 
 sub _send_multipart {
@@ -34231,6 +34391,16 @@ sub _mkdir {
 
 sub _delete {
   my ($file) = @_;
+
+  if ( $opt->{use_own_storage} ) {
+    my $bucket = $aws_storage_backend->bucket($aws_container);
+
+    $bucket->add_key( $file, '' )
+      or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr
+      if $opt->{use_own_storage};
+
+  }
+
   my $uri = URI->new(BASE_URL);
   $uri->path('storage');
   $uri->query_form( path => $file );
@@ -34249,19 +34419,46 @@ sub _send_default {
   $uri->path('/storage');
 
   my $etag = -l $file ? md5_hex('') : $attrs->[ETAG];
+  my $_size = -l $file ? 0: -s $file;
 
   return 1
     if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
 
   my $sfile = $changes->{stage_file};
 
+  my %metadata = _get_metadata( $file, $attrs );
+
+  my $metadata_ref = +{%metadata};
+
+  if ( $opt->{use_own_storage} ) {
+
+    my $bucket = $aws_storage_backend->bucket($aws_container);
+
+    if ( -s $file < $PART_LIMIT_SIZE ) {
+      my $path = $file;
+      $path =~ s/^\///;
+      $bucket->add_key(
+        $path,
+        ( -l $file ? '' : \$sfile ),
+        _make_header( $metadata_ref, $file )
+        )
+        or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr;
+    }
+    else {
+      _aws_backend_send_multipart( $file, $attrs, $changes );
+    }
+  }
+
   my $req = POST $uri,
     Content_Type => 'form-data',
     Etag         => $etag,
     Content      => [
-    _get_metadata( $file, $attrs ),
+    %metadata,
     path => "$file",
-    ( !-l $file ? ( value => [$sfile] ) : () )
+    _size => $_size,
+    (
+      !-l $file ? ( $opt->{use_own_storage} ? () : ( value => [$sfile] ) ) : ()
+    )
     ];
   _send_request($req);
 
@@ -34316,18 +34513,12 @@ sub _delete_files {
   $pm->wait_all_children;
 }
 
-sub _make_control_file {
-  my $suffix = shift;
-  my $base   = md5_hex( $node_key . $partner_key . $path );
-  return join('/', BASE_DIR, "$base.$suffix");
-}
-
 sub _read_cache {
   #
   # Slurp cache File
   #
 
-  my $cache_file = &_make_control_file('cache');
+  my $cache_file = $util->make_control_file('cache');
   my %cache;
   my $cache_file_version = &_filename_cache_version($cache_file);
 
@@ -34361,7 +34552,8 @@ sub _read_cache {
 
     $cache{$file} = $attrs;
   }
-  $util->log_info( 'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info(
+    'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 
   close($fh);
   undef($fh);
@@ -34395,7 +34587,7 @@ sub _read_cache_version {
 sub _write_cache {
   my (%cache)            = @_;
   my $t                  = time;
-  my $cache_file         = &_make_control_file('cache');
+  my $cache_file         = $util->make_control_file('cache');
   my $cache_file_version = &_filename_cache_version($cache_file);
   &_update_cache_version($cache_file_version);
 
@@ -34410,7 +34602,8 @@ sub _write_cache {
     keys %cache;
 
   # $cache_file->close;
-  $util->log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+  $util->log_info(
+    '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 
 sub lock {
@@ -34433,5 +34626,29 @@ sub _link_to_stage {
   my $stage_file = _stage_file($file);
   copy( $file, $stage_file ) or die "Copy failed: $!";
   return $stage_file;
+}
+
+sub _make_metaname {
+  return join( '-', 'x-amz-meta-b-datum', @_ );
+}
+
+sub _make_header () {
+  my ( $hash, $key, $version ) = @_;
+  $hash = keys( %{$hash} ) ? $hash : {};
+
+  foreach my $item ( keys %{$hash} ) {
+    next if $item =~ /^content/;
+    my $value = encode( 'MIME-Header', delete $hash->{$item} );
+    $value =~ s/\r?\n//g;
+    $hash->{ _make_metaname($item) } = $value;
+
+  }
+
+  my $hash_version = {
+    ( $version ? ( _make_metaname('version') => $version ) : () ),
+    'content-disposition' => basename($key)
+  };
+
+  return { %$hash, %$hash_version };
 }
 

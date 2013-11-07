@@ -33285,7 +33285,9 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
   
   use strict;
   use warnings;
+  use Digest::MD5 qw(md5_hex);
   
+  use bdatum::Constants ':all';
   use Module::Load::Conditional qw(can_load);
   
   # Yes, Fedora don't have any workaround for syslog.
@@ -33319,6 +33321,22 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
       $self->{_daemon} = $value;
   }
   
+  sub set_node_key {
+      my ($self, $value ) = @_;
+      $self->{node_key} = $value;
+  }
+  
+  sub set_partner_key {
+      my ($self, $value ) = @_;
+      $self->{partner_key} = $value;
+  }
+  
+  sub set_path {
+      my ($self, $value ) = @_;
+      $self->{path} = $value;
+  }
+  
+  
   sub validate_key {
       my $self = shift;
       my $key = shift || $self->log_error( "Required option missing.", 64 );
@@ -33347,6 +33365,18 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
       }
   
       return $ok;
+  }
+  
+  sub make_control_file {
+      my ($self, $suffix) = @_;
+      
+      if (!$self->{node_key} or !$self->{partner_key} or !$self->{path}) {
+          $self->log_error("Please, set the path, node_key and partner_key to make control file for $suffix", 64);
+          return;
+      }
+  
+      my $base   = md5_hex( $self->{node_key} . $self->{partner_key} . $self->{path} );
+      return join('/', BASE_DIR, "$base.$suffix");
   }
   
   sub _log {
@@ -33381,6 +33411,7 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
   sub log_error {
       my ( $self, $msg, $exit ) = @_;
       $self->_log( 'error', $msg );
+      return if $self->{_disable_log};
       exit $exit if $exit;
   }
   
@@ -33469,9 +33500,9 @@ our $VERSION = qv('0.23');
 
 our $util = bdatum::Util->new;
 
-our ( $node_key, $partner_key, $path, @blacklist, $manifest );
-our ( $stage_dir, $configfile, $ua, $pm );
-our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE );
+our ( $node_key, $partner_key, $path );
+our ( $configfile, $ua, $pm );
+our ( $usage, $run_lock_fh );
 
 our $opt        = {};
 our $parent_pid = $$;
@@ -33515,7 +33546,6 @@ sub run {
   &options;
   while (1) {
 
-    #    &setup_manifest;
     eval { &restore; };
 
     if ($@) {
@@ -33545,7 +33575,7 @@ sub check_alive {
 }
 
 sub _check_already_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   if ( -f $lock_file ) {
     open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
     flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
@@ -33555,15 +33585,10 @@ sub _check_already_running {
 }
 
 sub _remove_lock_running {
-  my $lock_file = &_make_control_file('lock');
+  my $lock_file = $util->make_control_file('lock');
   unlink($lock_file);
-  my $lastrestore_file = &_make_control_file('lastrestore');
+  my $lastrestore_file = $util->make_control_file('lastrestore');
   unlink($lastrestore_file) if -e $lastrestore_file;
-}
-
-sub setup_manifest {
-  $manifest = File::Temp->new( UNLINK => 0, )
-    or die q{Couldn't create manifest file};
 }
 
 sub _create_local_dir {
@@ -33595,7 +33620,6 @@ Usage: $app_name [options] [...]
     -n,--node-key          node key
     -p,--partner-key       partner key
 
-    -k,--nodelete          don't remove in remote storage files deleted
     -w,--workers           number of workers (default: 5)
     -d,--daemon            Daemon mode
     -c,--config            config file
@@ -33632,7 +33656,6 @@ sub options {
     "node-key|n=s"    => \$opt->{node_key},
     "partner-key|p=s" => \$opt->{partner_key},
 
-    "nodelete|k"        => \$opt->{nodelete},
     "workers|w"         => \$opt->{workers},
     "daemon|d"          => \$opt->{daemon},
     "config|c=s"        => \$opt->{config},
@@ -33684,9 +33707,7 @@ sub options {
   }
 
   # create base dir
-  $stage_dir = join( '/', BASE_DIR, 'stage' );
   &_create_local_dir(BASE_DIR);
-  &_create_local_dir($stage_dir);
   $configfile = $opt->{config} || '/etc/bdatum/backup.conf';
 
   if ( -r $configfile ) {
@@ -33716,6 +33737,17 @@ sub options {
   $util->validate_key($node_key);
   $util->validate_key($partner_key);
   $util->validate_basedir($path);
+
+  if ( !$util->validate_key($node_key)
+    or !$util->validate_key($partner_key)
+    or !$util->validate_path($path) )
+  {
+    $util->log_error( "Required option missing.", 64 );
+  }
+
+  $util->set_partner_key($partner_key);
+  $util->set_node_key($node_key);
+  $util->set_path($path);
 
 }
 
@@ -33805,14 +33837,14 @@ sub _get_files {
 }
 
 sub _get_lastrestore {
-  my $lastrestore_file = &_make_control_file('lastrestore');
+  my $lastrestore_file = $util->make_control_file('lastrestore');
   return unless -e $lastrestore_file;
   my $content = do { local ( @ARGV, $/ ) = $lastrestore_file; <> };
   return $content;
 }
 
 sub _write_lastrestore {
-  my $lastrestore_file = &_make_control_file('lastrestore');
+  my $lastrestore_file = $util->make_control_file('lastrestore');
   open my $fh, '>', $lastrestore_file;
   print $fh time;
   close $fh;
@@ -33967,51 +33999,6 @@ sub _send_request {
 
 }
 
-sub _make_control_file {
-  my $suffix = shift;
-  my $base   = md5_hex( $node_key . $partner_key . $path );
-  return join('/', BASE_DIR, "$base.$suffix");
-}
-sub _filename_cache_version {
-  join( '.', shift, 'version' );
-}
-
-sub _update_cache_version {
-  my $filename = shift;
-  my $fh = IO::File->new( $filename, 'w', ':unix' )
-    or die "Cannot open $filename";
-  print $fh $VERSION;
-}
-
-sub _read_cache_version {
-  my $filename = shift;
-  return qv(0) unless -r $filename;
-  my $content = do { local ( @ARGV, $/ ) = $filename; <> };
-  return $content if qv($content)->is_qv;
-  return qv(0);
-}
-
-sub _write_cache {
-  my (%cache)            = @_;
-  my $t                  = time;
-  my $cache_file         = &_make_control_file('cache');
-  my $cache_file_version = &_filename_cache_version($cache_file);
-  &_update_cache_version($cache_file_version);
-
-  open( my $fh, '>:unix', $cache_file )
-    or die "Cannot open $cache_file";
-
-  print {$fh}
-    map {
-    my $attrs = $cache{$_};
-    Encode::encode_utf8( join( q{,}, $_, @$attrs ) . "\n" );
-    }
-    keys %cache;
-
-  # $cache_file->close;
-  $util->log_info( '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
-}
-
 sub lock {
   my ($fh) = @_;
   flock( $fh, LOCK_EX ) or die "Cannot lock file - $!\n";
@@ -34021,16 +34008,5 @@ sub lock {
 sub unlock {
   my ($fh) = @_;
   flock( $fh, LOCK_UN ) or die "Cannot unlock file - $!\n";
-}
-
-sub _stage_file {
-  join( '/', $stage_dir, md5_hex( $node_key . $partner_key . $path . shift ) );
-}
-
-sub _link_to_stage {
-  my $file       = shift;
-  my $stage_file = _stage_file($file);
-  copy( $file, $stage_file ) or die "Copy failed: $!";
-  return $stage_file;
 }
 
