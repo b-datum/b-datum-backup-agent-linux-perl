@@ -215,7 +215,7 @@ Usage: bdatum-backup [options] [...]
     -d,--daemon            Daemon mode
     -c,--config            config file
 
-    --use-own-storage      use your own storage backend (default config: /etc/amazon.conf)
+    --use_own_storage      use your own storage backend (default config: /etc/amazon.conf)
     --storage-config       specify config for storage backend
 
     --profile              load profile
