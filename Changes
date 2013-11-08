@@ -1,3 +1,37 @@
+b-datum (0.24) unstable; urgency=low
+  
+  * Net::Amazon::S3 is not necessary for all cases
+  * use $ENV{HOME}/.b-datum/backup.conf as alternative
+  * check if system has net::amazon::s3
+  * sending file size
+  * adding config parameters for amazon.conf
+  * s3safe -- multipart upload support
+  * s3safe mode
+  * cleanup b-datum-restore
+  * make_control_file in Util.pm
+  * Remove sys::syslog
+  * add bdatum package for common constants
+  * Module::Load is core just in 5.9, add to fatlib
+  * use Module::Load::Conditional to know if system has sys::syslog (fedora)
+  * add first tests and initial release of lib/bdatum/Util.pm
+  * add debian/watch
+  * Remove install.sh
+  * src dir for sources, and add header.pl
+  * remove TODO, we will use the github issues
+  * BuildArch: noarch for RPM
+  * blockquote to shell
+  * update README.md with rpm package
+  * turn off FileDigests and PayloadIsXz in rpmbuild for CentOS 5.4
+  * AutoReqProv: no, please, dont try to find deps. We use fatpack.
+  * add dialog as dep to rpm
+  * we need ExtUtils::MakeMaker 6.76 to make RPM Packages
+  * NO_PERLLOCAL and NO_PACKLIST in dh-make-perl
+  * MIN_PERL_VERSION for 5.10
+  * add spec and script for make rpm package
+  * Remove Net::SSL from bdatum-restore
+
+  -- Thiago Rondon <thiago@b-datum.com>  Fri, 08 Nov 2013 16:44:06 -0300
+
 b-datum (0.23) unstable; urgency=low
   
   * package bdatum-backup and bdatum-restore with fatpack.
