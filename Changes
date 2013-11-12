@@ -1,5 +1,7 @@
 b-datum (0.24) unstable; urgency=low
   
+  * add LWP::MediaTypes and Module::Metadata in fatlib
+  * fix kill USR just for parent_pid if its the case
   * Net::Amazon::S3 is not necessary for all cases
   * use $ENV{HOME}/.b-datum/backup.conf as alternative
   * check if system has net::amazon::s3
