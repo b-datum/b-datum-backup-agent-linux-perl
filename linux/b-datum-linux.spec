@@ -1,7 +1,6 @@
 
 %define pkgversion 1
 %define maketest 1
-%define rpmversion %(grep 'VERSION =' src/bdatum-backup | perl -nle '/([0-9.]+)/ && print $1')
 
 Name:		b-datum
 Version:	%{rpmversion}	
