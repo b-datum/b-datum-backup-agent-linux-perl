@@ -32,7 +32,7 @@ b-datum (0.24) unstable; urgency=low
   * add spec and script for make rpm package
   * Remove Net::SSL from bdatum-restore
 
-  -- Thiago Rondon <thiago@b-datum.com>  Fri, 08 Nov 2013 16:44:06 -0300
+ -- Thiago Rondon <thiago@b-datum.com>  Fri, 08 Nov 2013 16:44:06 -0300
 
 b-datum (0.23) unstable; urgency=low
   
