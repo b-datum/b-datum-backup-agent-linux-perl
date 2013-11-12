@@ -22,5 +22,6 @@ WriteMakefile(
   },
   NO_PACKLIST => 1,
   NO_PERLLOCAL => 1,
+  EXCLUDE_EXT => '.pm'
 );
 
