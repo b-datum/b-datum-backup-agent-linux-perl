@@ -15,8 +15,8 @@ Packager:	Thiago Rondon <thiago@b-datum.com>
 Source:		b-datum-%{version}.tar.gz
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
-BuildRequires:	perl-IO-Socket-SSL, perl-Net-SSLeay
-Requires:	dialog, perl-IO-Socket-SSL, perl-Net-SSLeay
+BuildRequires:	perl-IO-Socket-SSL, perl-Net-SSLeaay, perl-Digest-MD5, perl-Params-Check, perl-Sys-Syslog
+Requires:	dialog, perl-IO-Socket-SSL, perl-Net-SSLeay, perl-Digest-MD5, perl-Params-Check, perl-Sys-Syslog
 AutoReqProv:	no
 BuildArch:	noarch
 
