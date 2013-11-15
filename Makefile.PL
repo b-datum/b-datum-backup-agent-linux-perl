@@ -1,5 +1,8 @@
 use ExtUtils::MakeMaker 6.76;
 
+my $dir_libs = ['libs'];
+$dir_libs = [] if -f '/etc/redhat-release';
+
 WriteMakefile(
   NAME       => 'bdatum',
   AUTHOR     => 'bdatum-staff',
@@ -22,6 +25,6 @@ WriteMakefile(
   },
   NO_PACKLIST => 1,
   NO_PERLLOCAL => 1,
-#  PMLIBDIRS => [],
+  PMLIBDIRS => $dir_libs,
 );
 
