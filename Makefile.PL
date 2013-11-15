@@ -1,6 +1,6 @@
 use ExtUtils::MakeMaker 6.76;
 
-my $dir_libs = ['libs'];
+my $dir_libs = ['lib'];
 $dir_libs = [] if -f '/etc/redhat-release';
 
 WriteMakefile(
