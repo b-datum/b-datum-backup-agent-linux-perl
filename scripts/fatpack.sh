@@ -1,4 +1,6 @@
 
+VERSION=$(grep \ VERSION Makefile.PL | sed -e "s/^.*\ '//;s/'.*//")
+
 for file in bdatum-backup bdatum-restore ; do
 
 #	fatpack trace src/$file
@@ -7,7 +9,7 @@ for file in bdatum-backup bdatum-restore ; do
 
 	( cat src/header.pl ; \
 		fatpack file ; \
-		cat src/$file ) \
+		sed -e "s/__VERSION_BY_SCRIPT__/$VERSION/" src/$file ) \
 		> bin/$file
 
 	chmod 755 bin/$file

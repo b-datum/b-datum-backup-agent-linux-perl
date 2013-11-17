@@ -48,7 +48,7 @@ use bdatum::Constants ':all';
 use bdatum::Util;
 
 use version;
-our $VERSION = qv('0.24');
+our $VERSION = qv('__VERSION_BY_SCRIPT__');
 
 our $util = bdatum::Util->new;
 
