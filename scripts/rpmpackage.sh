@@ -1,6 +1,7 @@
 #!/bin/bash
 
-VERSION=$1
+#VERSION=$1
+VERSION=$(grep \ VERSION b-datum-linux/Makefile.PL | sed -e "s/^.*\ '//;s/'.*//")
 
 if [ -z $VERSION ] ; then
 	echo "Use: bash b-datum-linux/scripts/rpmpackage.sh 0.01"
