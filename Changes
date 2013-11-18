@@ -1,3 +1,9 @@
+b-datum (0.25) unsatable; urgency=high
+
+  * Fix problems with deps for RPM distros.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Mon, 18 Nov 2013 10:12:48 -0300
+
 b-datum (0.24) unstable; urgency=low
   
   * add LWP::MediaTypes and Module::Metadata in fatlib

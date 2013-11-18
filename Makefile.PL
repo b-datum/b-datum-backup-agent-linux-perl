@@ -7,7 +7,7 @@ WriteMakefile(
   NAME       => 'bdatum',
   AUTHOR     => 'bdatum-staff',
   DISTNAME   => 'bdatum',
-  VERSION    => '0.24', # dh-make-perl, we can't use VERSION_FROM.
+  VERSION    => '0.25', # dh-make-perl, we can't use VERSION_FROM.
   ABSTRACT   => 'Provides tools for backup and restore files with b-datum.com',
   LICENSE    => 'GPLv3',
   EXE_FILES  => [ 'bin/bdatum-backup', 'bin/bdatum-restore', 'bin/bdatum-config' ],
