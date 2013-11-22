@@ -37099,6 +37099,7 @@ sub _check_if_has_s3 {
 
 sub run {
   &options;
+  &check_alive;
   while (1) {
     &setup_manifest;
     eval { &backup; };
