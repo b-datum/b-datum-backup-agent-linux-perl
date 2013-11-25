@@ -1,3 +1,9 @@
+b-datum (1.00) stable; urgency=low
+  
+  * Just renumbering
+
+ -- Thiago Rondon <thiago@b-datum.com>  Mon, 25 Nov 2013 20:53:12 -0300
+
 b-datum (0.26) unstable; urgency=low
 
   * removing dialog, using only bash.
