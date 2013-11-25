@@ -10,16 +10,16 @@ Para instalar no Ubuntu/Debian basta utilizar o pacote já pronto e utilizar o g
 # apt-get update
 # apt-get install gdebi-core
 # cd /tmp
-# wget https://github.com/b-datum/b-datum-linux/releases/download/0.24/b-datum-backup-perl_0.24-1_all.deb
-# gdebi b-datum-backup-perl_0.24-1_all.deb
+# wget https://github.com/b-datum/b-datum-linux/releases/download/0.26/b-datum-backup-perl_0.26-1_all.deb
+# gdebi b-datum-backup-perl_0.26-1_all.deb
 ```
 
 Para instalar no CentOS/Fedora/RedHat/OpenSuse, basta baixar o pacote:
 
 ```
 # cd /tmp
-# wget https://github.com/b-datum/b-datum-linux/releases/download/0.24/b-datum-linux-0.24-1.el6.x86_64.rpm
-# rpm -Uvh b-datum-linux-0.24-1.el6.x86_64.rpm
+# wget https://github.com/b-datum/b-datum-linux/releases/download/0.26/b-datum-linux-0.26-1.el6.x86_64.rpm
+# rpm -Uvh b-datum-linux-0.26-1.el6.x86_64.rpm
 ```
 
 Você também pode baixar os fontes, e realizar a instalação manual e executar o Makefile.

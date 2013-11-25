@@ -26,7 +26,7 @@ dh-make-perl $TARGET_DIR \
 	--desc 'Provides tools for backup and restore files with b-datum.com' \
 	--email 'staff@b-datum.com' \
 	--packagename 'b-datum' \
-	--intrusive --depends dialog
+	--intrusive
 
 cp $TARGET_DIR/linux/debian/postinst $TARGET_DIR/debian/postinst
 cp $TARGET_DIR/linux/debian/watch $TARGET_DIR/debian/watch

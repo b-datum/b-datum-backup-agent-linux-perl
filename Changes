@@ -1,3 +1,9 @@
+b-datum (0.26) unstable; urgency=low
+
+  * removing dialog, using only bash.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Mon, 25 Nov 2013 19:00:32 -0300
+
 b-datum (0.25) unsatable; urgency=high
 
   * Fix problems with deps for RPM distros.

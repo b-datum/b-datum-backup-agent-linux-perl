@@ -17,7 +17,7 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:	perl-IO-Socket-SSL, perl-Net-SSLeay, perl-Digest-MD5, perl-Sys-Syslog
 
-Requires:	dialog, perl-IO-Socket-SSL, perl-Net-SSLeay
+Requires:	perl-IO-Socket-SSL, perl-Net-SSLeay
 
 %if %{defined centos}
 Requires:	perl-Time-HiRes

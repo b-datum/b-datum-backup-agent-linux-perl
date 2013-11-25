@@ -16,9 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-which dialog &> /dev/null
-[ $? -ne 0 ]  && echo "Dialog utility is not available, Install it" && exit 1
-
 if [ "$(id -u)" != "0" ]; then
    echo "This script just can be run as root" 1>&2
    exit 1
@@ -31,15 +28,15 @@ ETCBKP=/etc/bdatum/backup.conf.bkp
 mkdir -p `dirname $ETC`
 
 function _get_nodekey(){
-	NODEKEY=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter your node key:" 10 30)
+	read -p "Enter your node key :" NODEKEY
 }
 
 function _get_partnerkey() {
-	PARTNERKEY=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter your partner key:" 10 30)
+	read -p "Enter your partner key :" PARTNERKEY
 }
 
 function _get_pathdir() {
-	PATHDIR=$(dialog --stdout --ok-label "Next" --backtitle "$APP" --no-cancel --inputbox "Enter backup directory:" 10 30)
+	read -p "Enter backup directory :" PATHDIR
 }
 
 function _write_default_config() {
@@ -62,7 +59,6 @@ path=$PATHDIR
 
 function _save_tmpfile() {
 	_write_default_config "$TMPFILE"
-	dialog --backtitle "$APP" --title "$ETC" --textbox $TMPFILE 22 70
 	if [ -f $ETC ] ; then
 		echo "Move $ETC to $ETCBKP..."
 		mv -f $ETC $ETCBKP
@@ -73,14 +69,20 @@ function _save_tmpfile() {
 
 function _ask_to_continue() {
 	msg=$1
-	dialog --backtitle "$APP" --yesno "$msg\nDo you like to continue this setup?" 6 50
-	response=$?
-	if [ $response == 1 ] ; then
-		if [ ! -f $ETC ] ; then
-			_write_default_config "$ETC"
-		fi
-		exit
-	fi
+
+	echo "*** $msg"
+	read -p "Continue (y/n)?" choice
+
+	case "$choice" in 
+		y|Y) echo "Ok." ;;
+		
+		n|N) if [ ! -f $ETC ] ; then 
+			_write_default_config "$ETC" 
+		     fi ; exit 
+		;;
+		
+		* ) echo "Invalid option" ;;
+	esac
 }
 
 while [ 1 ] ; do
