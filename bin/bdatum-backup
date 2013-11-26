@@ -37019,7 +37019,7 @@ use bdatum::Constants ':all';
 use bdatum::Util;
 
 use version;
-our $VERSION = qv('0.25');
+our $VERSION = qv('1.01');
 
 our $util = bdatum::Util->new;
 
@@ -37099,7 +37099,6 @@ sub _check_if_has_s3 {
 
 sub run {
   &options;
-  &check_alive;
   while (1) {
     &setup_manifest;
     eval { &backup; };
@@ -37439,6 +37438,8 @@ sub backup {
     $ua->add_handler( "request_send",  sub { shift->dump; return } );
     $ua->add_handler( "response_done", sub { shift->dump; return } );
   }
+
+  &check_alive();
 
   $pm = Parallel::ForkManager->new( $opt->{workers} );
 
