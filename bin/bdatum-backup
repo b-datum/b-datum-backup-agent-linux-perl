@@ -38016,6 +38016,7 @@ sub _send_request {
   my $res = $ua->request($req);
   if ( !$res->is_success ) {
     if ( $res->code == 401 ) {
+      $util->log_error("*** ERROR: 401 http unauthorized");
       kill USR1 => $parent_pid if $parent_pid;
       kill USR1 => $main_pid if $main_pid;
       exit;

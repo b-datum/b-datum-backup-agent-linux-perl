@@ -1,7 +1,8 @@
 b-datum (1.01) stable; urgency=high
 
   * make check alive as the first job
- 
+  * 401 http unauthorized message in _send_request
+
  -- Thiago Rondon <thiago@b-datum.com>  Mon, 26 Nov 2013 13:24:10 -0300
 
 b-datum (1.00) stable; urgency=low
