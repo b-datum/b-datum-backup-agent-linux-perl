@@ -1050,7 +1050,8 @@ sub _send_request {
       kill USR1 => $main_pid if $main_pid;
       exit;
     }
-    confess $res->as_string;
+    print "[failed] ", $res->status_line, "\n";
+    exit -1;
   }
   return $res;
 
