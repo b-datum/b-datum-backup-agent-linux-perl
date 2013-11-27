@@ -37016,7 +37016,7 @@ use bdatum::Constants ':all';
 use bdatum::Util;
 
 use version; 
-our $VERSION = qv('1.01');
+our $VERSION = qv('1.02');
 
 our $util = bdatum::Util->new;
 

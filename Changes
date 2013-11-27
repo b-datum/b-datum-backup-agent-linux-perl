@@ -1,3 +1,9 @@
+b-datum (1.02) stable; urgency=low
+
+  * treat problems with DNS, be more user-friendly.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Mon, 27 Nov 2013 23:22:30 -0300
+
 b-datum (1.01) stable; urgency=high
 
   * make check alive as the first job
