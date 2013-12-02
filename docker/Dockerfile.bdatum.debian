@@ -1,0 +1,5 @@
+FROM tianon/debian
+MAINTAINER Thiago Rondon, thiago@b-datum.com
+RUN apt-get update
+RUN apt-get -y install wget libnet-ssleay-perl
+

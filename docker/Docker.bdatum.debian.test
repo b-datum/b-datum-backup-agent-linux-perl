@@ -1,0 +1,8 @@
+FROM bdatum/debian
+MAINTAINER Thiago Rondon, thiago@b-datum.com
+
+RUN wget https://raw.github.com/b-datum/b-datum-linux/master/bin/bdatum-backup --no-check-certificate -O /tmp/bdatum-backup
+RUN perl /tmp/bdatum-backup --version
+RUN wget https://raw.github.com/b-datum/b-datum-linux/master/bin/bdatum-restore --no-check-certificate -O /tmp/bdatum-restore
+RUN perl /tmp/bdatum-restore --version
+
