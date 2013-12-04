@@ -210,6 +210,8 @@ Usage: bdatum-backup [options] [...]
     -p,--partner_key       partner key
     --path                 target path
 
+    --encrypt              key between 8 and 56 bytes.
+
     -k,--nodelete          don't remove in remote storage files deleted
     -w,--workers           number of workers (default: 5)
     -d,--daemon            Daemon mode
@@ -249,6 +251,8 @@ sub options {
     "node_key|n=s"    => \$opt->{node_key},
     "partner_key|p=s" => \$opt->{partner_key},
     "path=s"          => \$opt->{path},
+
+    "encrypt=s"       => \$opt->{encrypt},
 
     "nodelete|k"        => \$opt->{nodelete},
     "workers|w"         => \$opt->{workers},
@@ -301,6 +305,15 @@ sub options {
   if ( $opt->{part_size} < 5 or $opt->{part_size} > 500 ) {
     $util->log_error("part_size option need to be > 5 or < 500.");
     exit(0);
+  }
+
+  # KEY
+  if ($opt->{encrypt}) {
+    my $len_encrypt = length($opt->{encrypt});
+    if ($len_encrypt < 8 or $len_encrypt > 56) {
+      $util->log_error("The key length between 8 and 56 bytes");
+      exit(0);
+    }
   }
 
   # part size for multipart upload.
@@ -1175,10 +1188,44 @@ sub _stage_file {
   join( '/', $stage_dir, md5_hex( $node_key . $partner_key . $path . shift ) );
 }
 
+sub _crypt_file {
+    my ($filein, $fileout) = @_;
+    use Crypt::Blowfish_PP;
+    my $bf = new Crypt::Blowfish_PP($opt->{encrypt});
+
+    open(my $in,  "<", $filein  ) or die "Couldn't open '$filein'";
+    open(my $out, '>', $fileout ) or die "Couldn't open '$fileout'";
+
+    my $buffer;
+    while( read($in, $buffer, 8) ) {
+      print $out $bf->encrypt($buffer);
+    }
+    close $in;
+    close $out;
+}
+
+=head1 _decrypt_file
+sub _decrypt_file {
+  my $file = shift;
+  use Crypt::Blowfish_PP;
+  my $bf = new Crypt::Blowfish_PP($opt->{encrypt});
+  my $out = <>;
+  open(my $rd, '<', $file);
+  while( read($rd, $buffer, 8) ) {
+    print $out $bf->decrypt($buffer);
+  }
+}
+=cut
+
 sub _link_to_stage {
   my $file       = shift;
   my $stage_file = _stage_file($file);
-  copy( $file, $stage_file ) or die "Copy failed: $!";
+
+  if ($opt->{encrypt}) {
+    &_crypt_file($file, $stage_file);
+  } else {
+    copy( $file, $stage_file ) or die "Copy failed: $!";
+  }
   return $stage_file;
 }
 
