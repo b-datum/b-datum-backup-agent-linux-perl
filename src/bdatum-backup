@@ -320,6 +320,9 @@ sub options {
 
   if (!$configfile and $ENV{'HOME'}) {
     $configfile = join('/', $ENV{'HOME'}, '.b-datum', 'backup.conf');
+    if (! -r $configfile ) {
+      $configfile = join('/', $ENV{'HOME'}, '.bdatum', 'backup.conf');
+    }
   }
 
   if ( -r $configfile ) {
