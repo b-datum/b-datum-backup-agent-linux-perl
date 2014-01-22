@@ -1,6 +1,6 @@
 b-datum (1.03) stable; urgency=low
 
-  * retrocompatible dir in $HOME for config file
+  * retrocompatible config dir for config file in 
   * Use always .bdatum/backup.conf.tmp as temp file (this is for some *unix)
   * Shell-script for install and launch bdatum-backup in MacOS.
 
