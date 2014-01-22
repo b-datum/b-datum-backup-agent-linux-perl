@@ -16,15 +16,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-if [ "$(id -u)" != "0" ]; then
-   echo "This script just can be run as root" 1>&2
-   exit 1
-fi
-
 APP="b-datum backup config tool"
-TMPFILE=`tempfile`
+TMPFILE=/etc/bdatum/backup.conf.tmp
 ETC=/etc/bdatum/backup.conf
 ETCBKP=/etc/bdatum/backup.conf.bkp
+
+if [ "$(id -u)" != "0" ]; then
+   #echo "This script just can be run as root" 1>&2
+   #exit 1
+  TMPFILE=$HOME/.bdatum/backup.conf.tmp
+  ETC=$HOME/.bdatum/backup.conf
+  ETCBKP=$HOME/.bdatum/backup.conf.bkp
+fi
+
 mkdir -p `dirname $ETC`
 
 function _get_nodekey(){
