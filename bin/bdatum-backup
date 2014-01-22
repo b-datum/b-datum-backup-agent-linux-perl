@@ -37019,7 +37019,7 @@ use bdatum::Constants ':all';
 use bdatum::Util;
 
 use version;
-our $VERSION = qv('1.02');
+our $VERSION = qv('1.03');
 
 our $util = bdatum::Util->new;
 
@@ -37291,6 +37291,9 @@ sub options {
 
   if (!$configfile and $ENV{'HOME'}) {
     $configfile = join('/', $ENV{'HOME'}, '.b-datum', 'backup.conf');
+    if (! -r $configfile ) {
+      $configfile = join('/', $ENV{'HOME'}, '.bdatum', 'backup.conf');
+    }
   }
 
   if ( -r $configfile ) {
