@@ -37461,6 +37461,8 @@ sub _get_files {
     {
       error_handler => sub { $util->log_error(@_); },
 
+      sort_files => 1,
+
       # show symlinks
       follow_symlinks => 1,
 

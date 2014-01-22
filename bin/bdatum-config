@@ -24,9 +24,9 @@ ETCBKP=/etc/bdatum/backup.conf.bkp
 if [ "$(id -u)" != "0" ]; then
    #echo "This script just can be run as root" 1>&2
    #exit 1
-  TMPFILE=$HOME/.bdatum/backup.conf.tmp
-  ETC=$HOME/.bdatum/backup.conf
-  ETCBKP=$HOME/.bdatum/backup.conf.bkp
+  TMPFILE=$HOME/.b-datum/backup.conf.tmp
+  ETC=$HOME/.b-datum/backup.conf
+  ETCBKP=$HOME/.b-datum/backup.conf.bkp
 fi
 
 mkdir -p `dirname $ETC`

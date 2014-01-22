@@ -429,9 +429,11 @@ sub backup {
   my $ua_cache = LWP::ConnCache->new();
   $ua_cache->total_capacity(10);
 
+  my $OS = $^O || 'Linux';
+
   $ua = LWP::UserAgent::Determined->new(
     requests_redirectable => [qw(GET HEAD DELETE PUT POST)],
-    agent                 => "bdatum-backup/$VERSION (Linux)",
+    agent                 => "bdatum-backup/$VERSION ($OS)",
   );
 
   if ( $opt->{proxy_server} ) {
