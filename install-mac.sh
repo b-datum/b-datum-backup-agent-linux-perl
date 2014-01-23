@@ -1,7 +1,8 @@
 #!/bin/bash
 
 LABEL="com.bdatum.backup.mac.plist"
-PLISTU="$HOME/Library/LaunchAgents/$LABEL"
+LAUNCHDIR="$HOME/Library/LaunchAgents"
+PLISTU="$LAUNCHDIR/$LABEL"
 
 if [ -f $PLISTU ] ; then
   launchctl unload -w $PLISTU
@@ -17,7 +18,7 @@ if [ -f $PLISTU ] ; then
   sudo rm $PLISTU
 fi
 
+mkdir -p $LAUNCHDIR
 cp macos/$LABEL $PLISTU
-
 launchctl load -w $PLISTU
 
