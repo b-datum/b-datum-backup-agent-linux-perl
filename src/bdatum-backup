@@ -225,6 +225,7 @@ Usage: bdatum-backup [options] [...]
 
     --proxy_scheme         Proxy scheme (Default: http)
     --proxy_server         Proxy server
+    --proxy_port           Proxy port
     --proxy_username       Proxy username
     --proxy_password       Proxy password
 
@@ -264,6 +265,7 @@ sub options {
 
     "proxy_scheme=s"   => \$opt->{proxy_scheme},
     "proxy_server=s"   => \$opt->{proxy_server},
+    "proxy_port=i"     => \$opt->{proxy_port},
     "proxy_username=s" => \$opt->{proxy_username},
     "proxy_password=s" => \$opt->{proxy_password},
 
@@ -439,8 +441,11 @@ sub backup {
   if ( $opt->{proxy_server} ) {
     my $scheme   = $opt->{proxy_scheme};
     my $server   = $opt->{proxy_server};
+    my $port     = $opt->{proxy_port};
     my $username = $opt->{proxy_username};
     my $password = $opt->{proxy_password};
+
+    $server .= ":$port" if $port;
 
     # For HTTP
     my $proxy = "$scheme://$username:$password\@$server";
