@@ -447,8 +447,11 @@ sub backup {
 
     $server .= ":$port" if $port;
 
+    my $proxy_login;
+    $proxy_login = "$username:$password\@" if $username;
+
     # For HTTP
-    my $proxy = "$scheme://$username:$password\@$server";
+    my $proxy = "$scheme://$proxy_login$server";
     $ua->proxy( [$scheme], $proxy );
 
     # For HTTPS
