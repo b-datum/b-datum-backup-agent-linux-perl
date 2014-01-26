@@ -68,7 +68,7 @@ my %metadata_map = (
 
 our ( $node_key,  $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
-our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE );
+our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE,  $config );
 
 our (
   $aws_config,             $aws_configfile,        $aws_access_key_id,
@@ -337,7 +337,7 @@ sub options {
     my $config_all = Config::Any::INI->load($configfile);
     my $profile    = $opt->{profile};
 
-    my $config =
+    $config =
       defined $profile && exists $config_all->{$profile}
       ? $config_all->{$profile}
       : $config_all;
@@ -438,12 +438,12 @@ sub backup {
     agent                 => "bdatum-backup/$VERSION ($OS)",
   );
 
-  if ( $opt->{proxy_server} ) {
-    my $scheme   = $opt->{proxy_scheme};
-    my $server   = $opt->{proxy_server};
-    my $port     = $opt->{proxy_port};
-    my $username = $opt->{proxy_username};
-    my $password = $opt->{proxy_password};
+  if ( $config->{proxy_server} || $opt->{proxy_server} ) {
+    my $scheme   = $config->{proxy_scheme} || $opt->{proxy_scheme};
+    my $server   = $config->{proxy_server} || $opt->{proxy_server};
+    my $port     = $config->{proxy_port} || $opt->{proxy_port};
+    my $username = $config->{proxy_username} || $opt->{proxy_username};
+    my $password = $config->{proxy_password} || $opt->{proxy_password};
 
     $server .= ":$port" if $port;
 

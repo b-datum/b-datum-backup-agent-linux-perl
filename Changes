@@ -5,6 +5,7 @@ b-datum (1.03) stable; urgency=low
   * Shell-script for install and launch bdatum-backup in MacOS.
   * Use operation system in the version string.
   * Use proxy_port as option
+  * Create ~/Library/LaunchAgents if necessary (MacOSX)
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 22 Jan 2014 11:32:30 -0300
 

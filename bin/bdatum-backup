@@ -37039,7 +37039,7 @@ my %metadata_map = (
 
 our ( $node_key,  $partner_key, $path, @blacklist, $manifest );
 our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
-our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE );
+our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE,  $config );
 
 our (
   $aws_config,             $aws_configfile,        $aws_access_key_id,
@@ -37194,8 +37194,9 @@ Usage: bdatum-backup [options] [...]
     --persistent_time      time in seconds for run again the scan in directory to do backup (default: 180)
     --retry_time           time to retry the request to bdatum if some request fails (default: 30)
 
-    --proxy_scheme         Proxy schema (Default: http)
+    --proxy_scheme         Proxy scheme (Default: http)
     --proxy_server         Proxy server
+    --proxy_port           Proxy port
     --proxy_username       Proxy username
     --proxy_password       Proxy password
 
@@ -37233,8 +37234,9 @@ sub options {
     "use_own_storage"  => \$opt->{use_own_storage},
     "storage_config=s" => \$opt->{aws_config},
 
-    "proxy_schema=s"   => \$opt->{proxy_schema},
+    "proxy_scheme=s"   => \$opt->{proxy_scheme},
     "proxy_server=s"   => \$opt->{proxy_server},
+    "proxy_port=i"     => \$opt->{proxy_port},
     "proxy_username=s" => \$opt->{proxy_username},
     "proxy_password=s" => \$opt->{proxy_password},
 
@@ -37306,7 +37308,7 @@ sub options {
     my $config_all = Config::Any::INI->load($configfile);
     my $profile    = $opt->{profile};
 
-    my $config =
+    $config =
       defined $profile && exists $config_all->{$profile}
       ? $config_all->{$profile}
       : $config_all;
@@ -37407,14 +37409,19 @@ sub backup {
     agent                 => "bdatum-backup/$VERSION ($OS)",
   );
 
-  if ( $opt->{proxy_server} ) {
-    my $scheme   = $opt->{proxy_scheme};
-    my $server   = $opt->{proxy_server};
-    my $username = $opt->{proxy_username};
-    my $password = $opt->{proxy_password};
+  if ( $config->{proxy_server} || $opt->{proxy_server} ) {
+    my $scheme   = $config->{proxy_scheme} || $opt->{proxy_scheme};
+    my $server   = $config->{proxy_server} || $opt->{proxy_server};
+    my $port     = $config->{proxy_port} || $opt->{proxy_port};
+    my $username = $config->{proxy_username} || $opt->{proxy_username};
+    my $password = $config->{proxy_password} || $opt->{proxy_password};
+
+    $server .= ":$port" if $port;
+    my $proxy_login;
+    $proxy_login = "$username:$password\@" if $username;
 
     # For HTTP
-    my $proxy = "$scheme://$username:$password\@$server";
+    my $proxy = "$scheme://$proxy_login$server";
     $ua->proxy( [$scheme], $proxy );
 
     # For HTTPS
