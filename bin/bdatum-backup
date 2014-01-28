@@ -37289,8 +37289,6 @@ use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
-use LWP::Debug qw(+); 
-
 our $CAN_DO_S3 = 0;
 eval { 
     require Net::Amazon::S3;

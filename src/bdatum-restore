@@ -186,6 +186,7 @@ Usage: $app_name [options] [...]
     -m --mode              Sets this mode for every restored file and directory (default: 0777)
     --preserve-ownership   Preserve ownership of restored files when they were uploaded. Takes precedence over --mode
     --remote-prefix        Specifies path prefix to fetch from storage
+    --remote-ts            Select the date and time of the backup you want to restore (AAAA-MM-DD HH:MM:SS)
 
     -v,--verbose           verbose mode
     --debug                debug mode
@@ -195,6 +196,7 @@ Usage: $app_name [options] [...]
 
     $app_name -c ../backup.conf --basedir tmp/ --preserve-ownership
     $app_name --profile node01 --basedir /restore/node01
+    $app_name --remote-prefix /C/Users/Bob --remote-ts "2013-10-01 02:12:41"
 
 HELP
   exit(0);
@@ -221,7 +223,8 @@ sub options {
     "basedir|b=s"        => \$opt->{basedir},
     "mode|m=s"           => \$opt->{mode},
     "preserve-ownership" => \$opt->{preserve_ownership},
-    "remote-prefix"      => \$opt->{remote_prefix},
+    "remote-prefix=s"    => \$opt->{remote_prefix},
+    "remote-ts=s"        => \$opt->{remote_ts},
 
     "version|v" => \$opt->{version},
     "verbose"   => \$opt->{verbose},
@@ -291,7 +294,7 @@ sub options {
     or !$util->validate_key($partner_key)
     or !$util->validate_path($path) )
   {
-    $util->log_error( "Required option missing.", 64 );
+    $util->log_error( "Required option missing.11", 64 );
   }
 
   $util->set_partner_key($partner_key);
@@ -373,6 +376,7 @@ sub _get_files {
 
   $uri->query_form(
     path => ( $opt->{remote_prefix} || '/' ),
+    ($opt->{remote_ts} ? ( ts => $opt->{remote_ts} ) : () ),
     flatten      => 1,
     _for_restore => 1,
   );
