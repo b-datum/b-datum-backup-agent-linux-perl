@@ -23,6 +23,7 @@ use Encode;
 
 use LWP::UserAgent::Determined;
 use LWP::ConnCache;
+use LWP::Protocol::connect;
 use IO::Socket::SSL;
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
@@ -223,7 +224,7 @@ Usage: bdatum-backup [options] [...]
     --persistent_time      time in seconds for run again the scan in directory to do backup (default: 180)
     --retry_time           time to retry the request to bdatum if some request fails (default: 30)
 
-    --proxy_scheme         Proxy scheme (Default: http)
+    --proxy_scheme         Scheme, can be connect, http or https. (Default: connect)
     --proxy_server         Proxy server
     --proxy_port           Proxy port
     --proxy_username       Proxy username
@@ -290,7 +291,6 @@ sub options {
   $opt->{workers}         ||= 5;
   $opt->{persistent_time} ||= 180;
   $opt->{retry_time}      ||= 30;
-  $opt->{proxy_scheme}    ||= 'http';
 
   # Daemon
   if ( $opt->{daemon} ) {
@@ -440,6 +440,7 @@ sub backup {
 
   if ( $config->{proxy_server} || $opt->{proxy_server} ) {
     my $scheme   = $config->{proxy_scheme} || $opt->{proxy_scheme};
+    $scheme    ||= 'connect';
     my $server   = $config->{proxy_server} || $opt->{proxy_server};
     my $port     = $config->{proxy_port} || $opt->{proxy_port};
     my $username = $config->{proxy_username} || $opt->{proxy_username};
@@ -452,10 +453,14 @@ sub backup {
 
     # For HTTP
     my $proxy = "$scheme://$proxy_login$server";
-    $ua->proxy( [$scheme], $proxy );
+    $ua->protocols_allowed( [ 'http', 'https'] );
+    #$ua->proxy( ['http', 'https'], $proxy );
 
+    # For basic authorization
+    #if ($username) {
+    #    $ua->credentials($server, 'domain', $username, $password);
+    #}
     # For HTTPS
-    $proxy                     = "$scheme://$server";
     $ENV{HTTPS_PROXY}          = $proxy;
     $ENV{HTTPS_PROXY_USERNAME} = $username;
     $ENV{HTTPS_PROXY_PASSWORD} = $password;
@@ -463,7 +468,6 @@ sub backup {
     $ENV{HTTP_PROXY_USERNAME}  = $username;
     $ENV{HTTP_PROXY_PASSWORD}  = $password;
 
-    #$Net::HTTPS::SSL_SOCKET_CLASS      = "Net::SSL";
     $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
     $ua->env_proxy(1);
 
@@ -1066,6 +1070,8 @@ sub _send_request {
       exit;
     }
     print "[failed] ", $res->status_line, "\n";
+    print $res->headers_as_string;
+
     exit -1;
   }
   return $res;

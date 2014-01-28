@@ -8,6 +8,7 @@ b-datum (1.03) stable; urgency=low
   * Create ~/Library/LaunchAgents if necessary (MacOSX)
   * Allow proxy setup in backup.conf
   * Allow proxy without username and password
+  * Add LWP::Protocol::connect for standard squid proxy to https
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 22 Jan 2014 11:32:30 -0300
 

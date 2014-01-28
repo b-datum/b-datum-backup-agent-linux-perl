@@ -17635,6 +17635,166 @@ $fatpacked{"LWP/Protocol/GHTTP.pm"} = <<'LWP_PROTOCOL_GHTTP';
   1;
 LWP_PROTOCOL_GHTTP
 
+$fatpacked{"LWP/Protocol/connect.pm"} = <<'LWP_PROTOCOL_CONNECT';
+  package LWP::Protocol::connect;
+  
+  use warnings;
+  use strict;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  require LWP::Protocol;
+  our @ISA = qw(LWP::Protocol);
+  
+  our @supported_schemes = ( 'https', 'http' );
+  
+  sub request {
+      my($self, $request, $proxy, $arg, $size, $timeout) = @_;
+      my $url = $request->uri;
+      my $scheme = $url->scheme;
+  
+      if(!defined $proxy) {
+  	    return HTTP::Response->new( &HTTP::Status::RC_BAD_REQUEST,
+  		    'HTTP/CONNECT method protocol schema can only be used with a proxy!');
+      }
+  
+      if( ! grep { $scheme eq $_ } @supported_schemes ) {
+  	    return HTTP::Response->new( &HTTP::Status::RC_BAD_REQUEST,
+  		    $scheme.' protocol scheme is not supported by '. __PACKAGE__ );
+      }
+  
+      my $connect_scheme = $scheme."::connect";
+      my $socket_scheme = $connect_scheme."::Socket";
+  
+      for my $scheme ( $connect_scheme, $socket_scheme ) {
+          eval 'require LWP::Protocol::'.$scheme; ## no critic
+  	if( $@ ) {
+  	    return HTTP::Response->new( &HTTP::Status::RC_BAD_REQUEST,
+  		    'could not load '.$connect_scheme.' protocol support: '.$@);
+  	}
+      }
+  
+      my $protocol = LWP::Protocol::create($connect_scheme, $self->{ua});
+      $protocol->{proxy_connect_opts} = [
+      	ProxyAddr => $proxy->host,
+  	ProxyPort => $proxy->port,
+  	ProxyUserinfo => $proxy->userinfo,
+  	Agent => $self->{ua},
+      ];
+  
+      $protocol->request($request, undef, $arg, $size, $timeout);
+  }
+  
+  1;
+  
+  __END__
+  
+  =head1 NAME
+  
+  LWP::Protocol::connect - Provides HTTP/CONNECT proxy support for LWP::UserAgent
+  
+  =head1 SYNOPSIS
+  
+    use LWP::UserAgent;
+  
+    $ua = LWP::UserAgent->new(); 
+    $ua->proxy('https', 'connect://proxyhost.domain:3128/');
+  
+    $ua->get('https://www.somesslsite.com');
+  
+  =head1 Proxy Authentication
+  
+  If you pass the authentication within the userinfo string of the proxy url
+  a Basic authentication header will always be generated and sent to the proxy.
+  
+    $ua->proxy('https', 'connect://user:pw@proxyhost.domain:3128');
+  
+  The more general way is to add the credentials of the proxy to the $ua object.
+  
+    $ua->credentials("localhost:3128", "Squid proxy-caching web server", "user", "pw");
+  
+  In this case the first request to the proxy will fail with a "407 Proxy Auth. Required".
+  This will cause LWP::UserAgent to choose the right LWP::Authen::<method> module to
+  add the authentication and retry.
+  
+  =head1 DESCRIPTION
+  
+  The LWP::Protocol::connect module provides support for using https over
+  a proxy via the HTTP/CONNECT method.
+  
+  =head1 SEE ALSO
+  
+  L<IO::Socket::SSL>, L<LWP::Protocol::https>
+  
+  =head1 COPYRIGHT
+  
+  Copyright 2013 Markus Benning <me@w3r3wolf.de>
+  
+  This library is free software; you can redistribute it and/or
+  modify it under the same terms as Perl itself.
+  
+LWP_PROTOCOL_CONNECT
+
+$fatpacked{"LWP/Protocol/connect/Socket/Base.pm"} = <<'LWP_PROTOCOL_CONNECT_SOCKET_BASE';
+  package LWP::Protocol::connect::Socket::Base;
+  
+  use strict;
+  use warnings;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  use LWP::UserAgent;
+  use HTTP::Request;
+  
+  sub new {
+      my $class = shift;
+      my %args = @_;
+      my $conn = $class->_proxy_connect( \%args );
+      bless $conn, $class;
+      
+      $conn->http_configure( \%args );
+      return $conn;
+  }
+  
+  sub _proxy_connect {
+      my ( $class, $args ) = @_;
+      my $agent = $args->{Agent};
+      my ($user, $pass);
+      if( defined $args->{ProxyUserinfo} ) {
+           ($user, $pass) = split(':', URI::Escape::uri_unescape( $args->{ProxyUserinfo} ), 2);
+      }
+      my $proxy_host_port =  $args->{'ProxyAddr'}.':'.$args->{'ProxyPort'};
+      my $cur_http_proxy = $agent->proxy('http');
+      $agent->proxy( http => 'http://'.
+          ( defined $user ? $user.':'.$pass.'@' : '' ).
+          $proxy_host_port.'/' );
+  
+      my $host_port = $args->{PeerAddr}.":".$args->{PeerPort};
+      my $host = 'http://'.$host_port;
+      my $request = HTTP::Request->new( CONNECT => $host );
+      my $response = $agent->request( $request );
+      $agent->proxy( http => $cur_http_proxy );
+      
+      if( $response->is_error ) {
+          die('error while CONNECT thru proxy: '.$response->status_line );
+      }
+      my $conn = $response->{client_socket};
+  
+      delete $args->{ProxyAddr};
+      delete $args->{ProxyPort};
+      delete $args->{ProxyUserinfo};
+      delete $args->{Agent};
+  
+      return( $conn );
+  }
+  
+  sub http_connect {
+      return 1;
+  }
+  
+  1;
+LWP_PROTOCOL_CONNECT_SOCKET_BASE
+
 $fatpacked{"LWP/Protocol/cpan.pm"} = <<'LWP_PROTOCOL_CPAN';
   package LWP::Protocol::cpan;
   
@@ -19143,6 +19303,51 @@ $fatpacked{"LWP/Protocol/http.pm"} = <<'LWP_PROTOCOL_HTTP';
   1;
 LWP_PROTOCOL_HTTP
 
+$fatpacked{"LWP/Protocol/http/connect.pm"} = <<'LWP_PROTOCOL_HTTP_CONNECT';
+  package LWP::Protocol::http::connect;
+  
+  use strict;
+  use warnings;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  require LWP::Protocol::http;
+  our @ISA = qw(LWP::Protocol::http);
+  LWP::Protocol::implementor('http::connect' => 'LWP::Protocol::http::connect');
+  
+  sub new {
+      my $self = shift->SUPER::new(@_);
+      $self->{scheme} =~ s/::connect$//;
+      $self;
+  }
+  
+  sub _extra_sock_opts {
+      my $self = shift;
+      my($host, $port) = @_;
+      my @extra_sock_opts = $self->SUPER::_extra_sock_opts(@_);
+      return (@extra_sock_opts, @{$self->{proxy_connect_opts}});
+  }
+  
+  1;
+  
+LWP_PROTOCOL_HTTP_CONNECT
+
+$fatpacked{"LWP/Protocol/http/connect/Socket.pm"} = <<'LWP_PROTOCOL_HTTP_CONNECT_SOCKET';
+  package LWP::Protocol::http::connect::Socket;
+  
+  use strict;
+  use warnings;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  require LWP::Protocol::http;
+  use LWP::Protocol::connect::Socket::Base;
+  our @ISA = qw(LWP::Protocol::connect::Socket::Base LWP::Protocol::http::Socket);
+  
+  1;
+  
+LWP_PROTOCOL_HTTP_CONNECT_SOCKET
+
 $fatpacked{"LWP/Protocol/https.pm"} = <<'LWP_PROTOCOL_HTTPS';
   package LWP::Protocol::https;
   
@@ -19280,6 +19485,68 @@ $fatpacked{"LWP/Protocol/https.pm"} = <<'LWP_PROTOCOL_HTTPS';
   This library is free software; you can redistribute it and/or
   modify it under the same terms as Perl itself.
 LWP_PROTOCOL_HTTPS
+
+$fatpacked{"LWP/Protocol/https/connect.pm"} = <<'LWP_PROTOCOL_HTTPS_CONNECT';
+  package LWP::Protocol::https::connect;
+  
+  use strict;
+  use warnings;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  require LWP::Protocol::https;
+  our @ISA = qw(LWP::Protocol::https);
+  LWP::Protocol::implementor('https::connect' => 'LWP::Protocol::https::connect');
+  
+  sub new {
+      my $self = shift->SUPER::new(@_);
+      $self->{scheme} =~ s/::connect$//;
+      $self;
+  }
+  
+  sub _extra_sock_opts {
+      my $self = shift;
+      my($host, $port) = @_;
+      my @extra_sock_opts = $self->SUPER::_extra_sock_opts(@_);
+      return (@extra_sock_opts, @{$self->{proxy_connect_opts}});
+  }
+  
+  1;
+  
+LWP_PROTOCOL_HTTPS_CONNECT
+
+$fatpacked{"LWP/Protocol/https/connect/Socket.pm"} = <<'LWP_PROTOCOL_HTTPS_CONNECT_SOCKET';
+  package LWP::Protocol::https::connect::Socket;
+  
+  use strict;
+  use warnings;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  require LWP::Protocol::https;
+  use IO::Socket::SSL;
+  use LWP::Protocol::connect::Socket::Base;
+  our @ISA = qw(LWP::Protocol::connect::Socket::Base IO::Socket::SSL LWP::Protocol::https::Socket);
+  
+  sub new {
+      my $class = shift;
+      my %args = @_;
+      my $conn = $class->_proxy_connect( \%args );
+  
+      unless ($class->start_SSL($conn, %args)) {
+          my $status = 'error while setting up ssl connection';
+          if( $@ ) {
+              $status .= " (".$@.")";
+          }
+          die($status);
+      }
+      
+      $conn->http_configure( \%args );
+      return $conn;
+  }
+  
+  1;
+LWP_PROTOCOL_HTTPS_CONNECT_SOCKET
 
 $fatpacked{"LWP/Protocol/loopback.pm"} = <<'LWP_PROTOCOL_LOOPBACK';
   package LWP::Protocol::loopback;
@@ -33667,6 +33934,20 @@ $fatpacked{"URI/_userpass.pm"} = <<'URI__USERPASS';
   1;
 URI__USERPASS
 
+$fatpacked{"URI/connect.pm"} = <<'URI_CONNECT';
+  package URI::connect;
+  
+  use strict;
+  use warnings;
+  
+  our $VERSION = '6.09'; # VERSION
+  
+  use base 'URI::http';
+  
+  1;
+  
+URI_CONNECT
+
 $fatpacked{"URI/data.pm"} = <<'URI_DATA';
   package URI::data;  # RFC 2397
   
@@ -36994,6 +37275,7 @@ use Encode;
 
 use LWP::UserAgent::Determined;
 use LWP::ConnCache;
+use LWP::Protocol::connect;
 use IO::Socket::SSL;
 use URI;
 use HTTP::Request::Common qw(GET PUT HEAD POST DELETE);
@@ -37006,6 +37288,8 @@ use Try::Tiny;
 use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
+
+use LWP::Debug qw(+); 
 
 our $CAN_DO_S3 = 0;
 eval { 
@@ -37194,7 +37478,7 @@ Usage: bdatum-backup [options] [...]
     --persistent_time      time in seconds for run again the scan in directory to do backup (default: 180)
     --retry_time           time to retry the request to bdatum if some request fails (default: 30)
 
-    --proxy_scheme         Proxy scheme (Default: http)
+    --proxy_scheme         Scheme, can be connect, http or https. (Default: connect)
     --proxy_server         Proxy server
     --proxy_port           Proxy port
     --proxy_username       Proxy username
@@ -37261,7 +37545,6 @@ sub options {
   $opt->{workers}         ||= 5;
   $opt->{persistent_time} ||= 180;
   $opt->{retry_time}      ||= 30;
-  $opt->{proxy_scheme}    ||= 'http';
 
   # Daemon
   if ( $opt->{daemon} ) {
@@ -37411,21 +37694,27 @@ sub backup {
 
   if ( $config->{proxy_server} || $opt->{proxy_server} ) {
     my $scheme   = $config->{proxy_scheme} || $opt->{proxy_scheme};
+    $scheme    ||= 'connect';
     my $server   = $config->{proxy_server} || $opt->{proxy_server};
     my $port     = $config->{proxy_port} || $opt->{proxy_port};
     my $username = $config->{proxy_username} || $opt->{proxy_username};
     my $password = $config->{proxy_password} || $opt->{proxy_password};
 
     $server .= ":$port" if $port;
+
     my $proxy_login;
     $proxy_login = "$username:$password\@" if $username;
 
     # For HTTP
     my $proxy = "$scheme://$proxy_login$server";
-    $ua->proxy( [$scheme], $proxy );
+    $ua->protocols_allowed( [ 'http', 'https'] );
+    #$ua->proxy( ['http', 'https'], $proxy );
 
+    # For basic authorization
+    #if ($username) {
+    #    $ua->credentials($server, 'domain', $username, $password);
+    #}
     # For HTTPS
-    $proxy                     = "$scheme://$server";
     $ENV{HTTPS_PROXY}          = $proxy;
     $ENV{HTTPS_PROXY_USERNAME} = $username;
     $ENV{HTTPS_PROXY_PASSWORD} = $password;
@@ -37433,7 +37722,6 @@ sub backup {
     $ENV{HTTP_PROXY_USERNAME}  = $username;
     $ENV{HTTP_PROXY_PASSWORD}  = $password;
 
-    #$Net::HTTPS::SSL_SOCKET_CLASS      = "Net::SSL";
     $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
     $ua->env_proxy(1);
 
@@ -38036,6 +38324,8 @@ sub _send_request {
       exit;
     }
     print "[failed] ", $res->status_line, "\n";
+    print $res->headers_as_string;
+
     exit -1;
   }
   return $res;
