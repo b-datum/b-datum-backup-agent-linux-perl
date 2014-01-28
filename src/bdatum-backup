@@ -253,7 +253,7 @@ sub options {
     "path=s"          => \$opt->{path},
 
     "nodelete|k"        => \$opt->{nodelete},
-    "workers|w"         => \$opt->{workers},
+    "workers|w=i"       => \$opt->{workers},
     "daemon|d"          => \$opt->{daemon},
     "config|c=s"        => \$opt->{config},
     "profile=s"         => \$opt->{profile},

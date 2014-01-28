@@ -9,6 +9,8 @@ b-datum (1.03) stable; urgency=low
   * Allow proxy setup in backup.conf
   * Allow proxy without username and password
   * Add LWP::Protocol::connect for standard squid proxy to https
+  * Select the date and time of the backup you want to restore.
+  * Fixed parameter workers.
 
  -- Thiago Rondon <thiago@b-datum.com>  Wed, 22 Jan 2014 11:32:30 -0300
 
