@@ -1,3 +1,9 @@
+b-datum (1.04) stable; urgency=low
+
+  * Performance improvements: preforking workers in bdatum-backup.
+
+ -- Thiago Rondon <thiago@b-datum.com>  Sat, 8 Mar 2014 01:11:10 -0300
+
 b-datum (1.03) stable; urgency=low
 
   * retrocompatible config dir for config file in 

@@ -31,14 +31,14 @@ use HTTP::Request;
 use JSON::PP qw(encode_json decode_json);
 
 use Getopt::Long;
-use Parallel::ForkManager;
+use Parallel::Fork::BossWorkerAsync;
 use Try::Tiny;
 use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
 use Config::Any::INI;
 
 our $CAN_DO_S3 = 0;
-eval { 
+eval {
     require Net::Amazon::S3;
     Net::Amazon::S3->import;
     $CAN_DO_S3 = 1;
@@ -49,32 +49,34 @@ use bdatum::Constants ':all';
 use bdatum::Util;
 
 use version;
-our $VERSION = qv('__VERSION_BY_SCRIPT__');
+
+#our $VERSION = qv('__VERSION_BY_SCRIPT__');
+our $VERSION = qv('2.0');
 
 our $util = bdatum::Util->new;
 
 # ,=> to avoid fat comma stringification, the keys
 # need to be integers
 my %metadata_map = (
-  UID
-  , => 'meta-uid',
-  GID
-  , => 'meta-gid',
-  UMASK
-  , => 'meta-umask',
-  SYMLINK
-  ,      => 'meta-symlink',
-  MTIME, => 'meta-mtime'
+    UID
+    , => 'meta-uid',
+    GID
+    , => 'meta-gid',
+    UMASK
+    , => 'meta-umask',
+    SYMLINK
+    ,      => 'meta-symlink',
+    MTIME, => 'meta-mtime'
 );
 
 our ( $node_key,  $partner_key, $path, @blacklist, $manifest );
-our ( $stage_dir, $configfile,  $ua,   $pm,        $main_pid );
-our ( $usage,     $run_lock_fh, $PART_LIMIT_SIZE,  $config );
+our ( $stage_dir, $configfile,  $ua, $main_pid );
+our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE, $config );
 
 our (
-  $aws_config,             $aws_configfile,        $aws_access_key_id,
-  $aws_storage_type,       $aws_access_key_secret, $aws_container,
-  $aws_expiry_max_version, $aws_storage_backend
+    $aws_config,             $aws_configfile,        $aws_access_key_id,
+    $aws_storage_type,       $aws_access_key_secret, $aws_container,
+    $aws_expiry_max_version, $aws_storage_backend
 );
 
 our $opt        = {};
@@ -82,41 +84,41 @@ our $parent_pid = $$;
 our $_abort     = 0;
 
 $SIG{USR1} = sub {
-  $_abort = 1;
+    $_abort = 1;
 };
 
 # stripped from List::MoreUtils source
 sub pairwise (&\@\@) {
-  my $op = shift;
+    my $op = shift;
 
-  # Symbols for caller's input arrays
-  use vars qw{ @A @B };
-  local ( *A, *B ) = @_;
+    # Symbols for caller's input arrays
+    use vars qw{ @A @B };
+    local ( *A, *B ) = @_;
 
-  # Localise $a, $b
-  my ( $caller_a, $caller_b ) = do {
-    my $pkg = caller();
-    no strict 'refs';
-    \*{ $pkg . '::a' }, \*{ $pkg . '::b' };
-  };
+    # Localise $a, $b
+    my ( $caller_a, $caller_b ) = do {
+        my $pkg = caller();
+        no strict 'refs';
+        \*{ $pkg . '::a' }, \*{ $pkg . '::b' };
+    };
 
-  # Loop iteration limit
-  my $limit = $#A > $#B ? $#A : $#B;
+    # Loop iteration limit
+    my $limit = $#A > $#B ? $#A : $#B;
 
-  # This map expression is also the return value
-  local ( *$caller_a, *$caller_b );
-  map {
-    # Assign to $a, $b as refs to caller's array elements
-    ( *$caller_a, *$caller_b ) = \( $A[$_], $B[$_] );
+    # This map expression is also the return value
+    local ( *$caller_a, *$caller_b );
+    map {
+        # Assign to $a, $b as refs to caller's array elements
+        ( *$caller_a, *$caller_b ) = \( $A[$_], $B[$_] );
 
-    # Perform the transformation
-    $op->();
-  } 0 .. $limit;
+        # Perform the transformation
+        $op->();
+    } 0 .. $limit;
 }
 
 sub _unauthorized_abort {
-  $util->log_error("*** ERROR: 401 http unauthorized");
-  exit 77;    # EX_NOPERM
+    $util->log_error("*** ERROR: 401 http unauthorized");
+    exit 77;    # EX_NOPERM
 }
 
 sub _check_if_has_s3 {
@@ -124,87 +126,86 @@ sub _check_if_has_s3 {
     $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
     exit 1;
 }
-
 &run;
 
 sub run {
-  &options;
-  while (1) {
-    &setup_manifest;
-    eval { &backup; };
+    &options;
+    while (1) {
+        &setup_manifest;
+        eval { &backup; };
 
-    if ($@) {
-      $util->log_error($@);
+        if ($@) {
+            $util->log_error($@);
+        }
+        last unless $opt->{persistent};
+        &check_alive;
+        sleep( $opt->{persistent_time} );
     }
-    last unless $opt->{persistent};
-    &check_alive;
-    sleep( $opt->{persistent_time} );
-  }
 
-  &_remove_lock_running;
+    &_remove_lock_running;
 }
 
 sub check_alive {
-  $util->log_info("Sending alive to b-datum");
+    $util->log_info("Sending alive to b-datum");
 
-  my $uri = URI->new(BASE_URL);
-  $uri->path('alive');
+    my $uri = URI->new(BASE_URL);
+    $uri->path('alive');
 
-  my $req = GET $uri;
-  my $res = _send_request($req);
+    my $req = GET $uri;
+    my $res = _send_request($req);
 
-  if ( !$res->is_success ) {
-    $util->log_warn("WARNING: can't send alive to b-datum");
-  }
+    if ( !$res->is_success ) {
+        $util->log_warn("WARNING: can't send alive to b-datum");
+    }
 
 }
 
 sub _check_already_running {
-  my $lock_file = $util->make_control_file('lock');
-  if ( -f $lock_file ) {
-    open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
-    flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
-  }
-  open( FHL, ">", $lock_file ) or die "Cannot open $lock_file - $!";
-  flock( FHL, LOCK_EX | LOCK_NB );
+    my $lock_file = $util->make_control_file('lock');
+    if ( -f $lock_file ) {
+        open( FHL, "<", $lock_file ) or die "Cannot open $lock_file - $!";
+        flock( FHL, LOCK_EX | LOCK_NB ) or die "Already running.";
+    }
+    open( FHL, ">", $lock_file ) or die "Cannot open $lock_file - $!";
+    flock( FHL, LOCK_EX | LOCK_NB );
 }
 
 sub _remove_lock_running {
-  my $lock_file = $util->make_control_file('lock');
-  unlink($lock_file);
-  my $lastbackup_file = $util->make_control_file('lastbackup');
-  unlink($lastbackup_file) if -e $lastbackup_file;
+    my $lock_file = $util->make_control_file('lock');
+    unlink($lock_file);
+    my $lastbackup_file = $util->make_control_file('lastbackup');
+    unlink($lastbackup_file) if -e $lastbackup_file;
 }
 
 sub setup_manifest {
-  $manifest = File::Temp->new( UNLINK => 0, )
-    or die q{Couldn't create manifest file};
+    $manifest = File::Temp->new( UNLINK => 0, )
+      or die q{Couldn't create manifest file};
 }
 
 sub _create_local_dir {
-  my $dir = shift;
-  mkdir($dir) unless -d $dir;
-  die "*** ERROR: Can't create directory $dir" unless -d $dir;
-  return $dir;
+    my $dir = shift;
+    mkdir($dir) unless -d $dir;
+    die "*** ERROR: Can't create directory $dir" unless -d $dir;
+    return $dir;
 }
 
 sub show_version {
-  print "bdatum-backup version $VERSION ($0)\n";
-  print "perl version $] ($^X)\n\n";
-  exit(0);
+    print "bdatum-backup version $VERSION ($0)\n";
+    print "perl version $] ($^X)\n\n";
+    exit(0);
 }
 
 sub show_help {
-  my $wrong_argv = shift;
-  if ($wrong_argv) {
-    print <<USAGE;
+    my $wrong_argv = shift;
+    if ($wrong_argv) {
+        print <<USAGE;
 Usage: bdatum-backup [options] [...]
 
 Try `bdatum-backup --help` for more options.
 USAGE
-    exit(1);
-  }
-  print <<HELP;
+        exit(1);
+    }
+    print <<HELP;
 Usage: bdatum-backup [options] [...]
 
     -n,--node_key          node key
@@ -243,987 +244,1021 @@ Usage: bdatum-backup [options] [...]
     bdatum-backup --persistent --daemon
 
 HELP
-  exit(0);
+    exit(0);
 }
 
 sub options {
-  GetOptions(
-    "node_key|n=s"    => \$opt->{node_key},
-    "partner_key|p=s" => \$opt->{partner_key},
-    "path=s"          => \$opt->{path},
+    GetOptions(
+        "node_key|n=s"    => \$opt->{node_key},
+        "partner_key|p=s" => \$opt->{partner_key},
+        "path=s"          => \$opt->{path},
 
-    "nodelete|k"        => \$opt->{nodelete},
-    "workers|w=i"       => \$opt->{workers},
-    "daemon|d"          => \$opt->{daemon},
-    "config|c=s"        => \$opt->{config},
-    "profile=s"         => \$opt->{profile},
-    "persistent"        => \$opt->{persistent},
-    "persistent_time=i" => \$opt->{persistent_time},
-    "retry_time=i"      => \$opt->{retry_time},
+        "nodelete|k"        => \$opt->{nodelete},
+        "workers|w=i"       => \$opt->{workers},
+        "daemon|d"          => \$opt->{daemon},
+        "config|c=s"        => \$opt->{config},
+        "profile=s"         => \$opt->{profile},
+        "persistent"        => \$opt->{persistent},
+        "persistent_time=i" => \$opt->{persistent_time},
+        "retry_time=i"      => \$opt->{retry_time},
 
-    "use_own_storage"  => \$opt->{use_own_storage},
-    "storage_config=s" => \$opt->{aws_config},
+        "use_own_storage"  => \$opt->{use_own_storage},
+        "storage_config=s" => \$opt->{aws_config},
 
-    "proxy_scheme=s"   => \$opt->{proxy_scheme},
-    "proxy_server=s"   => \$opt->{proxy_server},
-    "proxy_port=i"     => \$opt->{proxy_port},
-    "proxy_username=s" => \$opt->{proxy_username},
-    "proxy_password=s" => \$opt->{proxy_password},
+        "proxy_scheme=s"   => \$opt->{proxy_scheme},
+        "proxy_server=s"   => \$opt->{proxy_server},
+        "proxy_port=i"     => \$opt->{proxy_port},
+        "proxy_username=s" => \$opt->{proxy_username},
+        "proxy_password=s" => \$opt->{proxy_password},
 
-    "part_size=i" => \$opt->{part_size},
+        "part_size=i" => \$opt->{part_size},
 
-    "version|v" => \$opt->{version},
-    "verbose"   => \$opt->{verbose},
-    "debug"     => \$opt->{debug},
-    "help"      => \$opt->{help},
-  ) or &show_help(1);
+        "version|v" => \$opt->{version},
+        "verbose"   => \$opt->{verbose},
+        "debug"     => \$opt->{debug},
+        "help"      => \$opt->{help},
+    ) or &show_help(1);
 
-  &show_version if $opt->{version};
-  &show_help    if $opt->{help};
+    &show_version if $opt->{version};
+    &show_help    if $opt->{help};
 
-  $util->set_debug(1)  if $opt->{debug};
-  $util->set_daemon(1) if $opt->{daemon};
+    $util->set_debug(1)  if $opt->{debug};
+    $util->set_daemon(1) if $opt->{daemon};
 
-  $0 = "[bdatum-backup]";
+    $0 = "[bdatum-backup]";
 
-  # Defaults
-  $opt->{part_size}       ||= 5;
-  $opt->{workers}         ||= 5;
-  $opt->{persistent_time} ||= 180;
-  $opt->{retry_time}      ||= 30;
+    # Defaults
+    $opt->{part_size}       ||= 5;
+    $opt->{workers}         ||= 5;
+    $opt->{persistent_time} ||= 180;
+    $opt->{retry_time}      ||= 30;
 
-  # Daemon
-  if ( $opt->{daemon} ) {
-    $main_pid = fork();
-    die "cannot fork" unless defined $main_pid;
-    exit 0 if $main_pid != 0;
-  }
-
-  # Check part_size
-  if ( $opt->{part_size} < 5 or $opt->{part_size} > 500 ) {
-    $util->log_error("part_size option need to be > 5 or < 500.");
-    exit(0);
-  }
-
-  # part size for multipart upload.
-  $PART_LIMIT_SIZE = $opt->{part_size} * 1024 * 1024;
-
-  # create base dir
-  $stage_dir = join( '/', BASE_DIR, 'stage' );
-  &_create_local_dir(BASE_DIR);
-  &_create_local_dir($stage_dir);
-
-  # get config file.
-  $configfile = $opt->{config};
-
-  if (!$configfile and -r '/etc/bdatum/backup.conf') {
-    $configfile = '/etc/bdatum/backup.conf';
-  }
-
-  if (!$configfile and $ENV{'HOME'}) {
-    $configfile = join('/', $ENV{'HOME'}, '.b-datum', 'backup.conf');
-    if (! -r $configfile ) {
-      $configfile = join('/', $ENV{'HOME'}, '.bdatum', 'backup.conf');
-    }
-  }
-
-  if ( -r $configfile ) {
-    my $st = stat $configfile;
-    my $mode = sprintf( '%04o', $st->mode & 07777 );
-    if ( $mode ne '0400' ) {
-      $util->log_error( "Please run 'chmod 0400 $configfile'", 78 );
+    # Daemon
+    if ( $opt->{daemon} ) {
+        $main_pid = fork();
+        die "cannot fork" unless defined $main_pid;
+        exit 0 if $main_pid != 0;
     }
 
-    my $config_all = Config::Any::INI->load($configfile);
-    my $profile    = $opt->{profile};
-
-    $config =
-      defined $profile && exists $config_all->{$profile}
-      ? $config_all->{$profile}
-      : $config_all;
-
-    $node_key    = $config->{node_key};
-    $partner_key = $config->{partner_key};
-    $path        = $config->{path};
-    @blacklist   = map {
-      my $r = $config->{blacklist}->{$_};
-      eval { qr/$r/ }
-        or die qq{Blacklist item "$_" is not a valid regex};
-    } keys %{ $config->{blacklist} || {} };
-  }
-
-  $aws_configfile = $opt->{aws_config} || '/etc/amazon.conf';
-
-  &_check_if_has_s3() if $opt->{use_own_storage};
-
-  if ( $opt->{use_own_storage} && -r $aws_configfile ) {
-    my $st = stat $aws_configfile;
-    my $mode = sprintf( '%04o', $st->mode & 07777 );
-    if ( $mode ne '0400' ) {
-      $util->log_error( "Please run 'chmod 0400 $aws_configfile'", 78 );
+    # Check part_size
+    if ( $opt->{part_size} < 5 or $opt->{part_size} > 500 ) {
+        $util->log_error("part_size option need to be > 5 or < 500.");
+        exit(0);
     }
 
-    my $config = Config::Any::INI->load($aws_configfile);
+    # part size for multipart upload.
+    $PART_LIMIT_SIZE = $opt->{part_size} * 1024 * 1024;
 
-    $aws_storage_type = $config->{storage_type} || 's3';
+    # create base dir
+    $stage_dir = join( '/', BASE_DIR, 'stage' );
+    &_create_local_dir(BASE_DIR);
+    &_create_local_dir($stage_dir);
 
-    $aws_access_key_id = $config->{access_key_id}
-      or $util->log_error( "Missing access_key_id", 78 ), exit(0);
-    $aws_access_key_secret = $config->{access_key_secret}
-      or $util->log_error( "Missing access_key_secret", 78 ), exit(0);
-    $aws_container = $config->{container}
-      or $util->log_error( "Missing container", 78 ), exit(0);
-    $aws_expiry_max_version = $config->{expiry_max_version};
+    # get config file.
+    $configfile = $opt->{config};
 
-    if ( $aws_storage_type =~ /^s3$/i ) {
-      &_check_if_has_s3;
-      $aws_storage_backend = Net::Amazon::S3->new(
-        {
-          aws_access_key_id     => $aws_access_key_id,
-          aws_secret_access_key => $aws_access_key_secret,
-          retry                 => 1,
+    if ( !$configfile and -r '/etc/bdatum/backup.conf' ) {
+        $configfile = '/etc/bdatum/backup.conf';
+    }
+
+    if ( !$configfile and $ENV{'HOME'} ) {
+        $configfile = join( '/', $ENV{'HOME'}, '.b-datum', 'backup.conf' );
+        if ( !-r $configfile ) {
+            $configfile = join( '/', $ENV{'HOME'}, '.bdatum', 'backup.conf' );
         }
-      );
-      $aws_storage_backend->bucket($aws_container);
     }
-  }
 
-  # skipping staging dir by blacklist
-  my $b_datum_dir = BASE_DIR;  # PBP - Bareword constants can't be interpolated.
-  push( @blacklist, qr/^$b_datum_dir/, qr/^$stage_dir/ );
+    if ( -r $configfile ) {
+        my $st = stat $configfile;
+        my $mode = sprintf( '%04o', $st->mode & 07777 );
+        if ( $mode ne '0400' ) {
+            $util->log_error( "Please run 'chmod 0400 $configfile'", 78 );
+        }
 
-  # for linux
-  push( @blacklist, qr/^\/proc\//, qr/^\/sys\// );
+        my $config_all = Config::Any::INI->load($configfile);
+        my $profile    = $opt->{profile};
 
-  $node_key    = $opt->{node_key}    if $opt->{node_key};
-  $partner_key = $opt->{partner_key} if $opt->{partner_key};
-  $path        = $opt->{path}        if $opt->{path};
+        $config =
+          defined $profile && exists $config_all->{$profile}
+          ? $config_all->{$profile}
+          : $config_all;
 
-  if ( !$util->validate_key($node_key)
-    or !$util->validate_key($partner_key)
-    or !$util->validate_path($path) )
-  {
-    $util->log_error( "Required option missing.", 64 );
-  }
+        $node_key    = $config->{node_key};
+        $partner_key = $config->{partner_key};
+        $path        = $config->{path};
+        @blacklist   = map {
+            my $r = $config->{blacklist}->{$_};
+            eval { qr/$r/ }
+              or die qq{Blacklist item "$_" is not a valid regex};
+        } keys %{ $config->{blacklist} || {} };
+    }
 
-  $util->set_partner_key($partner_key);
-  $util->set_node_key($node_key);
-  $util->set_path($path);
+    $aws_configfile = $opt->{aws_config} || '/etc/amazon.conf';
+
+    &_check_if_has_s3() if $opt->{use_own_storage};
+
+    if ( $opt->{use_own_storage} && -r $aws_configfile ) {
+        my $st = stat $aws_configfile;
+        my $mode = sprintf( '%04o', $st->mode & 07777 );
+        if ( $mode ne '0400' ) {
+            $util->log_error( "Please run 'chmod 0400 $aws_configfile'", 78 );
+        }
+
+        my $config = Config::Any::INI->load($aws_configfile);
+
+        $aws_storage_type = $config->{storage_type} || 's3';
+
+        $aws_access_key_id = $config->{access_key_id}
+          or $util->log_error( "Missing access_key_id", 78 ), exit(0);
+        $aws_access_key_secret = $config->{access_key_secret}
+          or $util->log_error( "Missing access_key_secret", 78 ), exit(0);
+        $aws_container = $config->{container}
+          or $util->log_error( "Missing container", 78 ), exit(0);
+        $aws_expiry_max_version = $config->{expiry_max_version};
+
+        if ( $aws_storage_type =~ /^s3$/i ) {
+            &_check_if_has_s3;
+            $aws_storage_backend = Net::Amazon::S3->new(
+                {
+                    aws_access_key_id     => $aws_access_key_id,
+                    aws_secret_access_key => $aws_access_key_secret,
+                    retry                 => 1,
+                }
+            );
+            $aws_storage_backend->bucket($aws_container);
+        }
+    }
+
+    # skipping staging dir by blacklist
+    my $b_datum_dir =
+      BASE_DIR;    # PBP - Bareword constants can't be interpolated.
+    push( @blacklist, qr/^$b_datum_dir/, qr/^$stage_dir/ );
+
+    # for linux
+    push( @blacklist, qr/^\/proc\//, qr/^\/sys\// );
+
+    $node_key    = $opt->{node_key}    if $opt->{node_key};
+    $partner_key = $opt->{partner_key} if $opt->{partner_key};
+    $path        = $opt->{path}        if $opt->{path};
+
+    if (   !$util->validate_key($node_key)
+        or !$util->validate_key($partner_key)
+        or !$util->validate_path($path) )
+    {
+        $util->log_error( "Required option missing.", 64 );
+    }
+
+    $util->set_partner_key($partner_key);
+    $util->set_node_key($node_key);
+    $util->set_path($path);
 
 }
 
 sub backup {
 
-  $util->log_debug("Node key: $node_key");
-  $util->log_debug("Partner key: $partner_key");
-  $util->log_debug("Path: $path");
+    $util->log_debug("Node key: $node_key");
+    $util->log_debug("Partner key: $partner_key");
+    $util->log_debug("Path: $path");
 
-  &_check_already_running;
+    &_check_already_running;
 
-  my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
-  my $context   = IO::Socket::SSL::SSL_Context->new(
-    SSL_verify_mode   => 0,
-    SSL_session_cache => $ssl_cache
-  );
-  IO::Socket::SSL::set_default_context($context);
-  IO::Socket::SSL::set_default_session_cache($ssl_cache);
+    my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
+    my $context   = IO::Socket::SSL::SSL_Context->new(
+        SSL_verify_mode   => 0,
+        SSL_session_cache => $ssl_cache
+    );
+    IO::Socket::SSL::set_default_context($context);
+    IO::Socket::SSL::set_default_session_cache($ssl_cache);
 
-  my $ua_cache = LWP::ConnCache->new();
-  $ua_cache->total_capacity(10);
+    my $ua_cache = LWP::ConnCache->new();
+    $ua_cache->total_capacity(10);
 
-  my $OS = $^O || 'Linux';
+    my $OS = $^O || 'Linux';
 
-  $ua = LWP::UserAgent::Determined->new(
-    requests_redirectable => [qw(GET HEAD DELETE PUT POST)],
-    agent                 => "bdatum-backup/$VERSION ($OS)",
-  );
+    $ua = LWP::UserAgent::Determined->new(
+        requests_redirectable => [qw(GET HEAD DELETE PUT POST)],
+        agent                 => "bdatum-backup/$VERSION ($OS)",
+    );
 
-  if ( $config->{proxy_server} || $opt->{proxy_server} ) {
-    my $scheme   = $config->{proxy_scheme} || $opt->{proxy_scheme};
-    $scheme    ||= 'connect';
-    my $server   = $config->{proxy_server} || $opt->{proxy_server};
-    my $port     = $config->{proxy_port} || $opt->{proxy_port};
-    my $username = $config->{proxy_username} || $opt->{proxy_username};
-    my $password = $config->{proxy_password} || $opt->{proxy_password};
+    if ( $config->{proxy_server} || $opt->{proxy_server} ) {
+        my $scheme = $config->{proxy_scheme} || $opt->{proxy_scheme};
+        $scheme ||= 'connect';
+        my $server   = $config->{proxy_server}   || $opt->{proxy_server};
+        my $port     = $config->{proxy_port}     || $opt->{proxy_port};
+        my $username = $config->{proxy_username} || $opt->{proxy_username};
+        my $password = $config->{proxy_password} || $opt->{proxy_password};
 
-    $server .= ":$port" if $port;
+        $server .= ":$port" if $port;
 
-    my $proxy_login;
-    $proxy_login = "$username:$password\@" if $username;
+        my $proxy_login;
+        $proxy_login = "$username:$password\@" if $username;
 
-    # For HTTP
-    my $proxy = "$scheme://$proxy_login$server";
-    $ua->protocols_allowed( [ 'http', 'https'] );
-    #$ua->proxy( ['http', 'https'], $proxy );
+        # For HTTP
+        my $proxy = "$scheme://$proxy_login$server";
+        $ua->protocols_allowed( [ 'http', 'https' ] );
 
-    # For basic authorization
-    #if ($username) {
-    #    $ua->credentials($server, 'domain', $username, $password);
-    #}
-    # For HTTPS
-    $ENV{HTTPS_PROXY}          = $proxy;
-    $ENV{HTTPS_PROXY_USERNAME} = $username;
-    $ENV{HTTPS_PROXY_PASSWORD} = $password;
-    $ENV{HTTP_PROXY}           = $proxy;
-    $ENV{HTTP_PROXY_USERNAME}  = $username;
-    $ENV{HTTP_PROXY_PASSWORD}  = $password;
+        #$ua->proxy( ['http', 'https'], $proxy );
 
-    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
-    $ua->env_proxy(1);
+        # For basic authorization
+        #if ($username) {
+        #    $ua->credentials($server, 'domain', $username, $password);
+        #}
+        # For HTTPS
+        $ENV{HTTPS_PROXY}          = $proxy;
+        $ENV{HTTPS_PROXY_USERNAME} = $username;
+        $ENV{HTTPS_PROXY_PASSWORD} = $password;
+        $ENV{HTTP_PROXY}           = $proxy;
+        $ENV{HTTP_PROXY_USERNAME}  = $username;
+        $ENV{HTTP_PROXY_PASSWORD}  = $password;
 
-  }
+        $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+        $ua->env_proxy(1);
 
-  $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
-    if LWP::UserAgent::Determined->can('ssl_opts');
-  $ua->timing( $opt->{retry_time} );
-  $ua->conn_cache($ua_cache);
-  $ua->add_handler( request_prepare =>
-      sub { shift->authorization_basic( $node_key, $partner_key ); } );
+    }
 
-  if ( $opt->{verbose} ) {
-    $ua->add_handler( "request_send",  sub { shift->dump; return } );
-    $ua->add_handler( "response_done", sub { shift->dump; return } );
-  }
+    $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0, )
+      if LWP::UserAgent::Determined->can('ssl_opts');
+    $ua->timing( $opt->{retry_time} );
+    $ua->conn_cache($ua_cache);
+    $ua->add_handler( request_prepare =>
+          sub { shift->authorization_basic( $node_key, $partner_key ); } );
 
-  &check_alive();
+    if ( $opt->{verbose} ) {
+        $ua->add_handler( "request_send",  sub { shift->dump; return } );
+        $ua->add_handler( "response_done", sub { shift->dump; return } );
+    }
 
-  $pm = Parallel::ForkManager->new( $opt->{workers} );
+    &check_alive();
 
-  start();
+    start();
 
-  $pm->wait_all_children;
+    _send_manifest();
 
-  _send_manifest();
-
-  close($manifest);
-  unlink($manifest);
+    close($manifest);
+    unlink($manifest);
 }
 
 sub _get_files {
-  return File::Next::everything(
-    {
-      error_handler => sub { $util->log_error(@_); },
+    return File::Next::everything(
+        {
+            error_handler => sub { $util->log_error(@_); },
 
-      # show symlinks
-      follow_symlinks => 1,
+            # show symlinks
+            follow_symlinks => 1,
 
-      sort_files => 1,
+            sort_files => 1,
 
-      # but ignore its descendants in case of being a link to dir
-      file_filter => sub {
+            # but ignore its descendants in case of being a link to dir
+            file_filter => sub {
 
-        -p $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is a named pipe")
-          && return;
+                -p $File::Next::name
+                  && $util->log_warn(
+                    "SKIPPING: $File::Next::name is a named pipe")
+                  && return;
 
-        -S $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is a socket")
-          && return;
+                -S $File::Next::name
+                  && $util->log_warn("SKIPPING: $File::Next::name is a socket")
+                  && return;
 
-        -b $File::Next::name
-          && $util->log_warn(
-          "SKIPPING: $File::Next::name is a block special file")
-          && return;
+                -b $File::Next::name
+                  && $util->log_warn(
+                    "SKIPPING: $File::Next::name is a block special file")
+                  && return;
 
-        -p $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name is a named pipe")
-          && return;
+                -p $File::Next::name
+                  && $util->log_warn(
+                    "SKIPPING: $File::Next::name is a named pipe")
+                  && return;
 
-        -c $File::Next::name
-          && $util->log_warn(
-          "SKIPPING: $File::Next::name is a character special file")
-          && return;
+                -c $File::Next::name
+                  && $util->log_warn(
+                    "SKIPPING: $File::Next::name is a character special file")
+                  && return;
 
-        -t $File::Next::name
-          && $util->log_warn(
-          "SKIPPING: $File::Next::name is is opened to a tty")
-          && return;
+                -t $File::Next::name
+                  && $util->log_warn(
+                    "SKIPPING: $File::Next::name is is opened to a tty")
+                  && return;
 
-             !-R $File::Next::name
-          && !-l $File::Next::name
-          && $util->log_warn("SKIPPING: $File::Next::name can't be read")
-          && return;
+                !-R $File::Next::name
+                  && !-l $File::Next::name
+                  && $util->log_warn(
+                    "SKIPPING: $File::Next::name can't be read")
+                  && return;
 
-        !_in_blacklist($File::Next::name)
-          && !-l dirname($File::Next::name)
-          && ( ( -d $File::Next::name && -x $File::Next::name )
-          || ( -f $File::Next::name )
-          || ( -l $File::Next::name ) );
-      },
-      descend_filter => sub {
-        !-l dirname($File::Next::dir);
-      },
-    },
-    $path
-  );
+                !_in_blacklist($File::Next::name)
+                  && !-l dirname($File::Next::name)
+                  && ( ( -d $File::Next::name && -x $File::Next::name )
+                    || ( -f $File::Next::name )
+                    || ( -l $File::Next::name ) );
+            },
+            descend_filter => sub {
+                !-l dirname($File::Next::dir);
+            },
+        },
+        $path
+    );
 }
 
 sub is_folder_empty {
-  my $dirname = shift;
-  opendir( my $dh, $dirname ) or die "Not a directory";
-  return scalar( grep { $_ ne "." && $_ ne ".." } readdir($dh) ) == 0;
+    my $dirname = shift;
+    opendir( my $dh, $dirname ) or die "Not a directory";
+    return scalar( grep { $_ ne "." && $_ ne ".." } readdir($dh) ) == 0;
 }
 
 sub _get_lastbackup {
-  my $lastbackup_file = $util->make_control_file('lastbackup');
-  return unless -e $lastbackup_file;
-  my $content = do { local ( @ARGV, $/ ) = $lastbackup_file; <> };
-  return $content;
+    my $lastbackup_file = $util->make_control_file('lastbackup');
+    return unless -e $lastbackup_file;
+    my $content = do { local ( @ARGV, $/ ) = $lastbackup_file; <> };
+    return $content;
 }
 
 sub _write_lastbackup {
-  my $file            = shift;
-  my $lastbackup_file = $util->make_control_file('lastbackup');
-  open my $fh, '>', $lastbackup_file;
-  print $fh $file;
-  close $fh;
+    my $file            = shift;
+    my $lastbackup_file = $util->make_control_file('lastbackup');
+    open my $fh, '>', $lastbackup_file;
+    print $fh $file;
+    close $fh;
 }
 
 sub start {
-  my %cache = _read_cache();
+    my %cache = _read_cache();
 
-  my $start           = time();
-  my $files           = &_get_files();
-  my $lastbackup_file = &_get_lastbackup;
-  my $lastbackup_run  = $lastbackup_file ? 1 : 0;
+    my $start           = time();
+    my $files           = &_get_files();
+    my $lastbackup_file = &_get_lastbackup;
+    my $lastbackup_run  = $lastbackup_file ? 1 : 0;
 
-FILE: while ( defined( my $file = $files->() ) ) {
+# Create new BossWorker instance
+my $bw = Parallel::Fork::BossWorkerAsync->new(
+    worker_count    => $opt->{workers},
+    work_handler => sub {
+        my ($job)          = @_;
+        my $file           = $job->{file};
+        my @previous_attrs = $job->{previous_attrs};
+        my $change_specs   = $job->{change_specs};
 
-    # abort backup if we receive unauthorized response from bdatum.
-    _unauthorized_abort() if $_abort;
+        $util->log_info("Sending $file...");
 
-    # fast way to do backup in the "second-first job",
-    # if the first-first backup not finish completely.
-    my $cache_file = $util->make_control_file('cache');
-    if ( !-e $cache_file && $lastbackup_run ) {
-      if ( $lastbackup_file eq $file ) {
-        $lastbackup_run = 0;
-      }
-      next;
-    }
-    elsif ( !-e $cache_file ) {
-      &_write_lastbackup($file);
-    }
+        my $attempt = 0;
+        my $error;
+        do {
+            try {
+                if (
+                    $previous_attrs[ETAG]
+                    && ( $previous_attrs[ETAG] eq
+                        $change_specs->{attributes}->[ETAG] )
+                  )
+                {
 
-    # here, we go.
-    $util->log_info("processing: $file");
-
-    if ( -d $file ) {
-      $cache{"$file/"} = [];
-      if ( is_folder_empty($file) ) {
-        _mkdir($file);
-        next;
-      }
-    }
-
-    next if !-l $file && -d $file;
-
-    my @previous_attrs = @{ $cache{$file} || [] };
-
-    my $change_specs = get_changes( $file, \@previous_attrs );
-
-    $cache{$file} = $change_specs->{attributes};
-
-    # The limit to send a file to bdatum is $PART_LIMIT_SIZE*1000 or 5TB.
-    my $file_size = -s $file;
-    if ( ( $file_size > $PART_LIMIT_SIZE * LIMIT_PARTS )
-      or $file_size > ( 5 * 1024 * 1024 * 1024 * 1025 ) )
-    {
-      $util->log_error(
-"Skipping $file, because the size ($file_size) is >5TB or >PART_SIZE*10000"
-      );
-      next;
-    }
-
-    $util->log_info("Sending $file...");
-
-    {
-      $pm->start and next;
-
-      my $attempt = 0;
-      my $error;
-      do {
-        try {
-          if ( $previous_attrs[ETAG]
-            && ( $previous_attrs[ETAG] eq $change_specs->{attributes}->[ETAG] )
-            )
-          {
-
-            # no content changed but some metadata did
-            if ( @{ $change_specs->{modified_fields} || [] } ) {
-              send_patch(%$change_specs);
+                    # no content changed but some metadata did
+                    if ( @{ $change_specs->{modified_fields} || [] } ) {
+                        send_patch(%$change_specs);
+                    }
+                }
+                else {
+                    send_file( $file, $change_specs->{attributes},
+                        $change_specs );
+                }
             }
-          }
-          else {
-            send_file( $file, $change_specs->{attributes}, $change_specs );
-          }
-        }
 
-        catch { $error = $_; sleep(3); };
-        if ($error) {
-          $util->log_warn("Error sending $file trying again... $attempt");
-          $util->log_warn("\t\t$error");
-        }
-      } while ( $error && ( $attempt++ < 3 ) );
+            catch { $error = $_; sleep(3); };
+            if ($error) {
+                $util->log_warn("Error sending $file trying again... $attempt");
+                $util->log_warn("\t\t$error");
+            }
+        } while ( $error && ( $attempt++ < 3 ) );
 
-      ( unlink( $change_specs->{stage_file} )
-          || die
-          qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
-        if exists $change_specs->{stage_file}
-        && -e $change_specs->{stage_file}
-        && !-l $change_specs->{stage_file};
-
-      $pm->finish;
+        ( unlink( $change_specs->{stage_file} )
+              || die
+              qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
+          if exists $change_specs->{stage_file}
+          && -e $change_specs->{stage_file}
+          && !-l $change_specs->{stage_file};
 
     }
-  }
+);
 
-  $pm->wait_all_children;
 
-  my $end = time();
-  $util->log_info("*\n*\n*\n* Started: $start");
-  $util->log_info("* Completed: $end");
+  FILE: while ( defined( my $file = $files->() ) ) {
 
-  _write_cache(%cache);
+        # abort backup if we receive unauthorized response from bdatum.
+        _unauthorized_abort() if $_abort;
+
+        # fast way to do backup in the "second-first job",
+        # if the first-first backup not finish completely.
+        my $cache_file = $util->make_control_file('cache');
+        if ( !-e $cache_file && $lastbackup_run ) {
+            if ( $lastbackup_file eq $file ) {
+                $lastbackup_run = 0;
+            }
+            next;
+        }
+        elsif ( !-e $cache_file ) {
+            &_write_lastbackup($file);
+        }
+
+        # here, we go.
+        $util->log_info("queuing: $file");
+
+        if ( -d $file ) {
+            $cache{"$file/"} = [];
+            if ( is_folder_empty($file) ) {
+                _mkdir($file);
+                next;
+            }
+        }
+
+        next if !-l $file && -d $file;
+
+        my @previous_attrs = @{ $cache{$file} || [] };
+
+        my $change_specs = get_changes( $file, \@previous_attrs );
+
+        $cache{$file} = $change_specs->{attributes};
+
+        # The limit to send a file to bdatum is $PART_LIMIT_SIZE*1000 or 5TB.
+        my $file_size = -s $file;
+        if ( ( $file_size > $PART_LIMIT_SIZE * LIMIT_PARTS )
+            or $file_size > ( 5 * 1024 * 1024 * 1024 * 1025 ) )
+        {
+            $util->log_error(
+"Skipping $file, because the size ($file_size) is >5TB or >PART_SIZE*10000"
+            );
+            next;
+        }
+
+        $bw->add_work(
+            {
+                file           => $file,
+                previous_attrs => \@previous_attrs,
+                change_specs   => $change_specs
+            }
+        );
+
+    }
+
+    $bw->shut_down();
+    my $end = time();
+    $util->log_info("*\n*\n*\n* Started: $start");
+    $util->log_info("* Completed: $end");
+
+    _write_cache(%cache);
 
 }
 
 sub _in_blacklist {
-  my $file = shift;
-  my $yes = grep { $file =~ $_ } @blacklist;
-  $util->log_warn("SKIPPING: $file is in blacklist") if $yes;
-  return $yes;
+    my $file = shift;
+    my $yes = grep { $file =~ $_ } @blacklist;
+    $util->log_warn("SKIPPING: $file is in blacklist") if $yes;
+    return $yes;
 }
 
 sub get_changes {
-  my ( $file, $attrs ) = @_;
+    my ( $file, $attrs ) = @_;
 
-  return unless defined $attrs && ( ref $attrs eq 'ARRAY' );
-  my $stat = ( -l $file ? File::stat::lstat($file) : File::stat::stat($file) )
-    or return;
+    return unless defined $attrs && ( ref $attrs eq 'ARRAY' );
+    my $stat = ( -l $file ? File::stat::lstat($file) : File::stat::stat($file) )
+      or return;
 
-  my $sfile =
-    -l $file
-    ? $file
-    : _link_to_stage($file);    # no need to move the symlink itself
-  my $etag = -l $file ? md5_hex('') : file_md5_hex($sfile);
-  my @modified_fields = ();
+    my $sfile =
+      -l $file
+      ? $file
+      : _link_to_stage($file);    # no need to move the symlink itself
+    my $etag = -l $file ? md5_hex('') : file_md5_hex($sfile);
+    my @modified_fields = ();
 
-  my $new_attrs = [
-    $stat->mtime, $etag, $stat->uid, $stat->gid,
-    sprintf( '%04o', $stat->mode ),
-    ( -l $file ? abs_path( readlink $file ) : '' )
-  ];
+    my $new_attrs = [
+        $stat->mtime, $etag, $stat->uid, $stat->gid,
+        sprintf( '%04o', $stat->mode ),
+        ( -l $file ? abs_path( readlink $file ) : '' )
+    ];
 
-  my $changes = {
-    stage_file      => $sfile,
-    file            => $file,
-    attributes      => $new_attrs,
-    modified_fields => undef,
-  };
+    my $changes = {
+        stage_file      => $sfile,
+        file            => $file,
+        attributes      => $new_attrs,
+        modified_fields => undef,
+    };
 
-  return $changes unless scalar @$attrs;    # new file, no changes
+    return $changes unless scalar @$attrs;    # new file, no changes
 
-  push @modified_fields,
-    grep { $attrs->[$_] ne $new_attrs->[$_] }
-    ( MTIME, ETAG, UID, GID, UMASK, SYMLINK );
+    push @modified_fields,
+      grep { $attrs->[$_] ne $new_attrs->[$_] }
+      ( MTIME, ETAG, UID, GID, UMASK, SYMLINK );
 
-  {
-    no warnings qw(once);
+    {
+        no warnings qw(once);
 
-    # nothing changed
+        # nothing changed
+        return $changes
+          if all( pairwise { $a eq $b } @$attrs, @$new_attrs ) == 1;
+    }
+
+    # symlinks read with readlink get its MTIME changed, we can ignore if
+    # the file it's a link
     return $changes
-      if all( pairwise { $a eq $b } @$attrs, @$new_attrs ) == 1;
-  }
+      if -l $file && scalar @$attrs == 1 && defined $attrs->[MTIME];
 
-  # symlinks read with readlink get its MTIME changed, we can ignore if
-  # the file it's a link
-  return $changes
-    if -l $file && scalar @$attrs == 1 && defined $attrs->[MTIME];
+    $changes->{modified_fields} = [@modified_fields];
 
-  $changes->{modified_fields} = [@modified_fields];
-
-  return $changes;
+    return $changes;
 
 }
 
 sub send_patch {
-  my (%change_specs) = @_;
-
-  my $uri = URI->new(BASE_URL);
-  $uri->path('storage');
-
-  $uri->query_form(
-    path => $change_specs{file},
-    map { $metadata_map{$_} => $change_specs{attributes}->[$_] }
-      @{ $change_specs{modified_fields} || [] }
-  );
-
-  my $req = HTTP::Request->new( 'PATCH', $uri );
-  $req->header( ETag => $change_specs{attributes}->[ETAG] );
-
-  _send_request($req);
-
-}
-
-sub send_file {
-  my ( $file, $attr ) = @_;
-
-  return _send_default(@_) if -l $file;
-
-  if ( -s $file < $PART_LIMIT_SIZE ) {
-    return _send_default(@_);
-  }
-  else {
-    return _send_default(@_) if $opt->{use_own_storage};
-    return _send_multipart(@_);
-  }
-
-  $util->log_info("DONE");
-
-}
-
-sub _send_manifest {
-  my $uri = URI->new(BASE_URL);
-  $uri->path('storage/manifest');
-
-  my $etag = file_md5_hex( $manifest->filename );
-
-  my $req = PUT $uri,
-    Etag    => $etag,
-    Content => scalar read_file( $manifest->filename );
-  my $res = _send_request($req);
-}
-
-sub _aws_backend_send_multipart {
-  my ( $file, $attrs, $changes ) = @_;
-
-  my $client = Net::Amazon::S3::Client->new( s3 => $aws_storage_backend );
-
-  my $path = $file;
-  $path =~ s/^\///;
-
-  my $bucket = $client->bucket( name => $aws_container );
-  my $object = $bucket->object( key => $path );
-
-  my $sfile = $changes->{stage_file};
-
-  my $fh = IO::File->new( $sfile, 'r', ':unix' )
-    or die "Cannot open $file";
-
-  my $upload_id = $object->initiate_multipart_upload;
-
-  my $i = 1;
-  my $buffer;
-  my @parts;
-  my @etags;
-
-  while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
-    $util->log_info("sending part $i of $file");
-
-    push @etags, md5_hex($buffer);
-    push @parts, $i;
-
-    my $response = $object->put_part(
-      upload_id   => $upload_id,
-      part_number => $i++,
-      value       => $buffer
-    );
-
-    $util->log_info("finish upload part $i of $file.");
-  }
-
-  $fh->close;
-  $object->complete_multipart_upload(
-    upload_id    => $upload_id,
-    etags        => \@etags,
-    part_numbers => \@parts
-  );
-}
-
-sub _send_multipart {
-  my ( $file, $attrs, $changes ) = @_;
-
-  my $etag = $attrs->[ETAG];
-  $util->log_info("init multipart upload to $file");
-
-  my $uri = URI->new(BASE_URL);
-  $uri->path('storage');
-
-  return 1
-    if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
-
-  # init
-  my $full_etag = $etag;
-  my $sfile     = $changes->{stage_file};
-
-  $uri->query_form( path => "$file", multipart => 1 );
-  my $req       = POST $uri, Etag => $full_etag;
-  my $res       = _send_request($req);
-  my $object    = decode_json( $res->content );
-  my $upload_id = $object->{upload_id};
-
-  # parts
-  my $buffer;
-
-  my $fh = IO::File->new( $sfile, 'r', ':unix' )
-    or die "Cannot open $file";
-
-  my $i = 1;
-  my @parts;
-
-  while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
-    $util->log_info("sending part $i of $file");
+    my (%change_specs) = @_;
 
     my $uri = URI->new(BASE_URL);
     $uri->path('storage');
 
-    my $etag = md5_hex($buffer);
-
-    push @parts, [ $i, $etag ];
-
     $uri->query_form(
-      path      => "$file",
-      upload_id => $upload_id,
-      part      => $i++
+        path => $change_specs{file},
+        map { $metadata_map{$_} => $change_specs{attributes}->[$_] }
+          @{ $change_specs{modified_fields} || [] }
     );
+
+    my $req = HTTP::Request->new( 'PATCH', $uri );
+    $req->header( ETag => $change_specs{attributes}->[ETAG] );
+
+    _send_request($req);
+
+}
+
+sub send_file {
+    my ( $file, $attr ) = @_;
+
+    return _send_default(@_) if -l $file;
+
+    if ( -s $file < $PART_LIMIT_SIZE ) {
+        return _send_default(@_);
+    }
+    else {
+        return _send_default(@_) if $opt->{use_own_storage};
+        return _send_multipart(@_);
+    }
+
+    $util->log_info("DONE");
+
+}
+
+sub _send_manifest {
+    my $uri = URI->new(BASE_URL);
+    $uri->path('storage/manifest');
+
+    my $etag = file_md5_hex( $manifest->filename );
 
     my $req = PUT $uri,
       Etag    => $etag,
-      Content => $buffer;
-
+      Content => scalar read_file( $manifest->filename );
     my $res = _send_request($req);
+}
 
-    $util->log_info("finish upload part $i of $file.");
-  }
-  $fh->close;
+sub _aws_backend_send_multipart {
+    my ( $file, $attrs, $changes ) = @_;
 
-  #finalize
-  $uri = URI->new(BASE_URL);
-  $uri->path('/storage');
-  $uri->query_form( path => "$file", upload_id => $upload_id );
+    my $client = Net::Amazon::S3::Client->new( s3 => $aws_storage_backend );
 
-  $req = POST $uri,
-    Content_type => 'application/json',
-    Accept       => 'application/json',
-    Etag         => $full_etag,
-    Content      => encode_json(
-    {
-      parts        => \@parts,
-      content_type => mimetype($sfile) || 'application/octet-stream',
-      _get_metadata( $file, $attrs )
+    my $path = $file;
+    $path =~ s/^\///;
+
+    my $bucket = $client->bucket( name => $aws_container );
+    my $object = $bucket->object( key => $path );
+
+    my $sfile = $changes->{stage_file};
+
+    my $fh = IO::File->new( $sfile, 'r', ':unix' )
+      or die "Cannot open $file";
+
+    my $upload_id = $object->initiate_multipart_upload;
+
+    my $i = 1;
+    my $buffer;
+    my @parts;
+    my @etags;
+
+    while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
+        $util->log_info("sending part $i of $file");
+
+        push @etags, md5_hex($buffer);
+        push @parts, $i;
+
+        my $response = $object->put_part(
+            upload_id   => $upload_id,
+            part_number => $i++,
+            value       => $buffer
+        );
+
+        $util->log_info("finish upload part $i of $file.");
     }
+
+    $fh->close;
+    $object->complete_multipart_upload(
+        upload_id    => $upload_id,
+        etags        => \@etags,
+        part_numbers => \@parts
     );
-  _send_request($req);
-  $util->log_info("finish upload multipart to $file");
+}
 
-  _write_to_manifest( $manifest, "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
+sub _send_multipart {
+    my ( $file, $attrs, $changes ) = @_;
 
-  return 1;
+    my $etag = $attrs->[ETAG];
+    $util->log_info("init multipart upload to $file");
+
+    my $uri = URI->new(BASE_URL);
+    $uri->path('storage');
+
+    return 1
+      if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key,
+        $attrs );
+
+    # init
+    my $full_etag = $etag;
+    my $sfile     = $changes->{stage_file};
+
+    $uri->query_form( path => "$file", multipart => 1 );
+    my $req       = POST $uri, Etag => $full_etag;
+    my $res       = _send_request($req);
+    my $object    = decode_json( $res->content );
+    my $upload_id = $object->{upload_id};
+
+    # parts
+    my $buffer;
+
+    my $fh = IO::File->new( $sfile, 'r', ':unix' )
+      or die "Cannot open $file";
+
+    my $i = 1;
+    my @parts;
+
+    while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
+        $util->log_info("sending part $i of $file");
+
+        my $uri = URI->new(BASE_URL);
+        $uri->path('storage');
+
+        my $etag = md5_hex($buffer);
+
+        push @parts, [ $i, $etag ];
+
+        $uri->query_form(
+            path      => "$file",
+            upload_id => $upload_id,
+            part      => $i++
+        );
+
+        my $req = PUT $uri,
+          Etag    => $etag,
+          Content => $buffer;
+
+        my $res = _send_request($req);
+
+        $util->log_info("finish upload part $i of $file.");
+    }
+    $fh->close;
+
+    #finalize
+    $uri = URI->new(BASE_URL);
+    $uri->path('/storage');
+    $uri->query_form( path => "$file", upload_id => $upload_id );
+
+    $req = POST $uri,
+      Content_type => 'application/json',
+      Accept       => 'application/json',
+      Etag         => $full_etag,
+      Content      => encode_json(
+        {
+            parts        => \@parts,
+            content_type => mimetype($sfile) || 'application/octet-stream',
+            _get_metadata( $file, $attrs )
+        }
+      );
+    _send_request($req);
+    $util->log_info("finish upload multipart to $file");
+
+    _write_to_manifest( $manifest,
+        "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
+
+    return 1;
 
 }
 
 sub _write_to_manifest {
-  my ( $manifest_file, $line ) = @_;
-  lock($manifest_file);
-  print $manifest_file $line;
-  unlock($manifest_file);
+    my ( $manifest_file, $line ) = @_;
+    lock($manifest_file);
+    print $manifest_file $line;
+    unlock($manifest_file);
 }
 
 sub _get_metadata {
-  my ( $file, $attrs ) = @_;
-  map { $metadata_map{$_} => $attrs->[$_] }
-    grep { defined $attrs->[$_] && length $attrs->[$_] }
-    map { int($_) } keys %metadata_map;
+    my ( $file, $attrs ) = @_;
+    map { $metadata_map{$_} => $attrs->[$_] }
+      grep { defined $attrs->[$_] && length $attrs->[$_] }
+      map { int($_) } keys %metadata_map;
 }
 
 sub _mkdir {
-  my ( $file, $attrs ) = @_;
-  my $uri = URI->new(BASE_URL);
+    my ( $file, $attrs ) = @_;
+    my $uri = URI->new(BASE_URL);
 
-  $file = "$file/";
-  $util->log_info("$file is an empty dir");
+    $file = "$file/";
+    $util->log_info("$file is an empty dir");
 
-  $uri->path('/storage');
+    $uri->path('/storage');
 
-  my $etag = $attrs->[ETAG];
+    my $etag = $attrs->[ETAG];
 
-  return 1
-    if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
+    return 1
+      if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key,
+        $attrs );
 
-  my $req = POST $uri,
-    Content_Type => 'form-data',
-    Content      => [ _get_metadata( $file, $attrs ), path => $file, ];
-  _send_request($req);
-  return 1;
+    my $req = POST $uri,
+      Content_Type => 'form-data',
+      Content      => [ _get_metadata( $file, $attrs ), path => $file, ];
+    _send_request($req);
+    return 1;
 
 }
 
 sub _delete {
-  my ($file) = @_;
+    my ($file) = @_;
 
-  if ( $opt->{use_own_storage} ) {
-    my $bucket = $aws_storage_backend->bucket($aws_container);
+    if ( $opt->{use_own_storage} ) {
+        my $bucket = $aws_storage_backend->bucket($aws_container);
 
-    $bucket->add_key( $file, '' )
-      or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr
-      if $opt->{use_own_storage};
+        $bucket->add_key( $file, '' )
+          or die $aws_storage_backend->err . ": "
+          . $aws_storage_backend->errstr
+          if $opt->{use_own_storage};
 
-  }
+    }
 
-  my $uri = URI->new(BASE_URL);
-  $uri->path('storage');
-  $uri->query_form( path => $file );
-  my $req = DELETE $uri;
-  $util->log_info("deleting $file");
-  my $res = $ua->request($req);
+    my $uri = URI->new(BASE_URL);
+    $uri->path('storage');
+    $uri->query_form( path => $file );
+    my $req = DELETE $uri;
+    $util->log_info("deleting $file");
+    my $res = $ua->request($req);
 
-  _write_to_manifest( $manifest, "-$file\n\n" );
+    _write_to_manifest( $manifest, "-$file\n\n" );
 
-  return $res->is_success;
+    return $res->is_success;
 }
 
 sub _send_default {
-  my ( $file, $attrs, $changes ) = @_;
-  my $uri = URI->new(BASE_URL);
-  $uri->path('/storage');
+    my ( $file, $attrs, $changes ) = @_;
+    my $uri = URI->new(BASE_URL);
+    $uri->path('/storage');
 
-  my $etag = -l $file ? md5_hex('') : $attrs->[ETAG];
-  my $_size = -l $file ? 0: -s $file;
+    my $etag  = -l $file ? md5_hex('') : $attrs->[ETAG];
+    my $_size = -l $file ? 0           : -s $file;
 
-  return 1
-    if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key, $attrs );
+    return 1
+      if _check_duplicate( $uri, $file, $etag, $node_key, $partner_key,
+        $attrs );
 
-  my $sfile = $changes->{stage_file};
+    my $sfile = $changes->{stage_file};
 
-  my %metadata = _get_metadata( $file, $attrs );
+    my %metadata = _get_metadata( $file, $attrs );
 
-  my $metadata_ref = +{%metadata};
+    my $metadata_ref = +{%metadata};
 
-  if ( $opt->{use_own_storage} ) {
+    if ( $opt->{use_own_storage} ) {
 
-    my $bucket = $aws_storage_backend->bucket($aws_container);
+        my $bucket = $aws_storage_backend->bucket($aws_container);
 
-    if ( -s $file < $PART_LIMIT_SIZE ) {
-      my $path = $file;
-      $path =~ s/^\///;
-      $bucket->add_key(
-        $path,
-        ( -l $file ? '' : \$sfile ),
-        _make_header( $metadata_ref, $file )
+        if ( -s $file < $PART_LIMIT_SIZE ) {
+            my $path = $file;
+            $path =~ s/^\///;
+            $bucket->add_key(
+                $path,
+                ( -l $file ? '' : \$sfile ),
+                _make_header( $metadata_ref, $file )
+              )
+              or die $aws_storage_backend->err . ": "
+              . $aws_storage_backend->errstr;
+        }
+        else {
+            _aws_backend_send_multipart( $file, $attrs, $changes );
+        }
+    }
+
+    my $req = POST $uri,
+      Content_Type => 'form-data',
+      Etag         => $etag,
+      Content      => [
+        %metadata,
+        path  => "$file",
+        _size => $_size,
+        (
+            !-l $file
+            ? ( $opt->{use_own_storage} ? () : ( value => [$sfile] ) )
+            : ()
         )
-        or die $aws_storage_backend->err . ": " . $aws_storage_backend->errstr;
-    }
-    else {
-      _aws_backend_send_multipart( $file, $attrs, $changes );
-    }
-  }
+      ];
+    _send_request($req);
 
-  my $req = POST $uri,
-    Content_Type => 'form-data',
-    Etag         => $etag,
-    Content      => [
-    %metadata,
-    path => "$file",
-    _size => $_size,
-    (
-      !-l $file ? ( $opt->{use_own_storage} ? () : ( value => [$sfile] ) ) : ()
-    )
-    ];
-  _send_request($req);
+    my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
+    _write_to_manifest( $manifest, "+$file\n+${\$stat->size}\n+$etag\n\n" );
 
-  my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
-  _write_to_manifest( $manifest, "+$file\n+${\$stat->size}\n+$etag\n\n" );
-
-  return 1;
+    return 1;
 
 }
 
 sub _check_duplicate {
-  my ( $uri, $file, $etag, $node_key, $partner_key, $attrs ) = @_;
-  my $req = POST $uri,
-    Content_Type => 'form-data',
-    Etag         => $etag,
-    Content      => [
-    etag  => $etag,
-    check => 1,
-    path  => "$file",
-    _get_metadata( $file, $attrs )
-    ];
-  my $res = $ua->request($req);
-  if ( $res->code == 201 ) {
-    my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
-    _write_to_manifest( $manifest, "+$file\n+${\$stat->size}\n+$etag\n\n" );
-  }
-  return $res->is_success;
+    my ( $uri, $file, $etag, $node_key, $partner_key, $attrs ) = @_;
+    my $req = POST $uri,
+      Content_Type => 'form-data',
+      Etag         => $etag,
+      Content      => [
+        etag  => $etag,
+        check => 1,
+        path  => "$file",
+        _get_metadata( $file, $attrs )
+      ];
+    my $res = $ua->request($req);
+    if ( $res->code == 201 ) {
+        my $stat =
+          -l $file ? File::stat::lstat($file) : File::stat::stat($file);
+        _write_to_manifest( $manifest, "+$file\n+${\$stat->size}\n+$etag\n\n" );
+    }
+    return $res->is_success;
 }
 
 sub _send_request {
 
-  my $req = shift;
-  my $res = $ua->request($req);
-  if ( !$res->is_success ) {
-    if ( $res->code == 401 ) {
-      $util->log_error("*** ERROR: 401 http unauthorized");
-      kill USR1 => $parent_pid if $parent_pid;
-      kill USR1 => $main_pid if $main_pid;
-      exit;
-    }
-    print "[failed] ", $res->status_line, "\n";
-    print $res->headers_as_string;
+    my $req = shift;
+    my $res = $ua->request($req);
+    if ( !$res->is_success ) {
+        if ( $res->code == 401 ) {
+            $util->log_error("*** ERROR: 401 http unauthorized");
+            kill USR1 => $parent_pid if $parent_pid;
+            kill USR1 => $main_pid   if $main_pid;
+            exit;
+        }
+        print "[failed] ", $res->status_line, "\n";
+        print $res->headers_as_string;
 
-    exit -1;
-  }
-  return $res;
+        exit -1;
+    }
+    return $res;
 
 }
 
 sub _delete_files {
-  my (@to_delete) = @_;
-  foreach my $delete_this (@to_delete) {
-    $pm->start and next;
-    _delete($delete_this);
-    $pm->finish;
-  }
-  $pm->wait_all_children;
+    my (@to_delete) = @_;
+    
+    my $bw = Parallel::Fork::BossWorkerAsync->new(
+      worker_count    => $opt->{workers},
+      work_handler    => \&_delete,
+    );
+    
+    foreach my $delete_this (@to_delete) {
+        $bw->add_work($delete_this);
+    }
+
+    $bw->shut_down();
 }
 
 sub _read_cache {
-  #
-  # Slurp cache File
-  #
+    #
+    # Slurp cache File
+    #
 
-  my $cache_file = $util->make_control_file('cache');
-  my %cache;
-  my $cache_file_version = &_filename_cache_version($cache_file);
+    my $cache_file = $util->make_control_file('cache');
+    my %cache;
+    my $cache_file_version = &_filename_cache_version($cache_file);
 
-  my $cache_version = &_read_cache_version($cache_file_version);
-  if ( version->parse($cache_version) != version->parse($VERSION) ) {
-    $util->log_info("Remove cache version file: $cache_file_version");
-    $util->log_info("Remove cache file: $cache_file");
-    unlink($cache_file_version);
-    unlink($cache_file);
-  }
-
-  return () unless -e $cache_file;
-
-  open( my $fh, '<:unix:encoding(UTF-8)', $cache_file )
-    or die "Cannot open $cache_file";
-
-  my $t = time;
-  my @to_delete;
-  while ( my $line = $fh->getline ) {
-    chomp($line);
-    my $attrs = [ split /,/, $line ];
-    my $file = shift @$attrs;
-    chomp($file);
-    my $stat = -l $file ? File::stat::lstat($file) : File::stat::stat($file);
-    if ( !$stat ) {
-      if ( !$opt->{nodelete} ) {
-        push( @to_delete, $file );
-      }
-      next;
+    my $cache_version = &_read_cache_version($cache_file_version);
+    if ( version->parse($cache_version) != version->parse($VERSION) ) {
+        $util->log_info("Remove cache version file: $cache_file_version");
+        $util->log_info("Remove cache file: $cache_file");
+        unlink($cache_file_version);
+        unlink($cache_file);
     }
 
-    $cache{$file} = $attrs;
-  }
-  $util->log_info(
-    'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+    return () unless -e $cache_file;
 
-  close($fh);
-  undef($fh);
+    open( my $fh, '<:unix:encoding(UTF-8)', $cache_file )
+      or die "Cannot open $cache_file";
 
-  if ( !$opt->{nodelete} && @to_delete ) {
-    _delete_files(@to_delete);
-  }
+    my $t = time;
+    my @to_delete;
+    while ( my $line = $fh->getline ) {
+        chomp($line);
+        my $attrs = [ split /,/, $line ];
+        my $file = shift @$attrs;
+        chomp($file);
+        my $stat =
+          -l $file ? File::stat::lstat($file) : File::stat::stat($file);
+        if ( !$stat ) {
+            if ( !$opt->{nodelete} ) {
+                push( @to_delete, $file );
+            }
+            next;
+        }
 
-  return %cache;
+        $cache{$file} = $attrs;
+    }
+    $util->log_info(
+        'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+
+    close($fh);
+    undef($fh);
+
+    if ( !$opt->{nodelete} && @to_delete ) {
+        _delete_files(@to_delete);
+    }
+
+    return %cache;
 }
 
 sub _filename_cache_version {
-  join( '.', shift, 'version' );
+    join( '.', shift, 'version' );
 }
 
 sub _update_cache_version {
-  my $filename = shift;
-  my $fh = IO::File->new( $filename, 'w', ':unix' )
-    or die "Cannot open $filename";
-  print $fh $VERSION;
+    my $filename = shift;
+    my $fh = IO::File->new( $filename, 'w', ':unix' )
+      or die "Cannot open $filename";
+    print $fh $VERSION;
 }
 
 sub _read_cache_version {
-  my $filename = shift;
-  return qv(0) unless -r $filename;
-  my $content = do { local ( @ARGV, $/ ) = $filename; <> };
-  return $content if qv($content)->is_qv;
-  return qv(0);
+    my $filename = shift;
+    return qv(0) unless -r $filename;
+    my $content = do { local ( @ARGV, $/ ) = $filename; <> };
+    return $content if qv($content)->is_qv;
+    return qv(0);
 }
 
 sub _write_cache {
-  my (%cache)            = @_;
-  my $t                  = time;
-  my $cache_file         = $util->make_control_file('cache');
-  my $cache_file_version = &_filename_cache_version($cache_file);
-  &_update_cache_version($cache_file_version);
+    my (%cache)            = @_;
+    my $t                  = time;
+    my $cache_file         = $util->make_control_file('cache');
+    my $cache_file_version = &_filename_cache_version($cache_file);
+    &_update_cache_version($cache_file_version);
 
-  open( my $fh, '>:unix', $cache_file )
-    or die "Cannot open $cache_file";
+    open( my $fh, '>:unix', $cache_file )
+      or die "Cannot open $cache_file";
 
-  print {$fh}
-    map {
-    my $attrs = $cache{$_};
-    Encode::encode_utf8( join( q{,}, $_, @$attrs ) . "\n" );
-    }
-    keys %cache;
+    print {$fh}
+      map {
+        my $attrs = $cache{$_};
+        Encode::encode_utf8( join( q{,}, $_, @$attrs ) . "\n" );
+      }
+      keys %cache;
 
-  # $cache_file->close;
-  $util->log_info(
-    '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
+    # $cache_file->close;
+    $util->log_info(
+        '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 
 sub lock {
-  my ($fh) = @_;
-  flock( $fh, LOCK_EX ) or die "Cannot lock file - $!\n";
-  seek( $fh, 0, SEEK_END ) or die "Cannot seek - $!\n";
+    my ($fh) = @_;
+    flock( $fh, LOCK_EX ) or die "Cannot lock file - $!\n";
+    seek( $fh, 0, SEEK_END ) or die "Cannot seek - $!\n";
 }
 
 sub unlock {
-  my ($fh) = @_;
-  flock( $fh, LOCK_UN ) or die "Cannot unlock file - $!\n";
+    my ($fh) = @_;
+    flock( $fh, LOCK_UN ) or die "Cannot unlock file - $!\n";
 }
 
 sub _stage_file {
-  join( '/', $stage_dir, md5_hex( $node_key . $partner_key . $path . shift ) );
+    join( '/', $stage_dir,
+        md5_hex( $node_key . $partner_key . $path . shift ) );
 }
 
 sub _link_to_stage {
-  my $file       = shift;
-  my $stage_file = _stage_file($file);
-  copy( $file, $stage_file ) or die "Copy failed: $!";
-  return $stage_file;
+    my $file       = shift;
+    my $stage_file = _stage_file($file);
+    copy( $file, $stage_file ) or die "Copy failed: $!";
+    return $stage_file;
 }
 
 sub _make_metaname {
-  return join( '-', 'x-amz-meta-b-datum', @_ );
+    return join( '-', 'x-amz-meta-b-datum', @_ );
 }
 
 sub _make_header () {
-  my ( $hash, $key, $version ) = @_;
-  $hash = keys( %{$hash} ) ? $hash : {};
+    my ( $hash, $key, $version ) = @_;
+    $hash = keys( %{$hash} ) ? $hash : {};
 
-  foreach my $item ( keys %{$hash} ) {
-    next if $item =~ /^content/;
-    my $value = encode( 'MIME-Header', delete $hash->{$item} );
-    $value =~ s/\r?\n//g;
-    $hash->{ _make_metaname($item) } = $value;
+    foreach my $item ( keys %{$hash} ) {
+        next if $item =~ /^content/;
+        my $value = encode( 'MIME-Header', delete $hash->{$item} );
+        $value =~ s/\r?\n//g;
+        $hash->{ _make_metaname($item) } = $value;
 
-  }
+    }
 
-  my $hash_version = {
-    ( $version ? ( _make_metaname('version') => $version ) : () ),
-    'content-disposition' => basename($key)
-  };
+    my $hash_version = {
+        ( $version ? ( _make_metaname('version') => $version ) : () ),
+        'content-disposition' => basename($key)
+    };
 
-  return { %$hash, %$hash_version };
+    return { %$hash, %$hash_version };
 }
 
