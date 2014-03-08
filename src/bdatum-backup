@@ -31,7 +31,7 @@ use HTTP::Request;
 use JSON::PP qw(encode_json decode_json);
 
 use Getopt::Long;
-use Parallel::Fork::BossWorkerAsync;
+use Parallel::Fork::BossWorker;
 use Try::Tiny;
 use Time::HiRes qw(time);
 use Perl6::Junction qw(all);
@@ -50,8 +50,7 @@ use bdatum::Util;
 
 use version;
 
-#our $VERSION = qv('__VERSION_BY_SCRIPT__');
-our $VERSION = qv('2.0');
+our $VERSION = qv('__VERSION_BY_SCRIPT__');
 
 our $util = bdatum::Util->new;
 
@@ -590,7 +589,7 @@ sub start {
     my $lastbackup_run  = $lastbackup_file ? 1 : 0;
 
 # Create new BossWorker instance
-my $bw = Parallel::Fork::BossWorkerAsync->new(
+my $bw = Parallel::Fork::BossWorker->new(
     worker_count    => $opt->{workers},
     work_handler => sub {
         my ($job)          = @_;
@@ -698,7 +697,7 @@ my $bw = Parallel::Fork::BossWorkerAsync->new(
 
     }
 
-    $bw->shut_down();
+    $bw->process();
     my $end = time();
     $util->log_info("*\n*\n*\n* Started: $start");
     $util->log_info("* Completed: $end");
@@ -1109,7 +1108,7 @@ sub _send_request {
 sub _delete_files {
     my (@to_delete) = @_;
     
-    my $bw = Parallel::Fork::BossWorkerAsync->new(
+    my $bw = Parallel::Fork::BossWorker->new(
       worker_count    => $opt->{workers},
       work_handler    => \&_delete,
     );
@@ -1118,7 +1117,7 @@ sub _delete_files {
         $bw->add_work($delete_this);
     }
 
-    $bw->shut_down();
+    $bw->process();
 }
 
 sub _read_cache {
