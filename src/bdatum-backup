@@ -307,6 +307,16 @@ sub options {
     exit(0);
   }
 
+  # Check for incompatible options used with "remote-config"
+
+  $util->log_warn(
+"the path defined in --path will be ignored if remote configuration is set to be used"
+  ) if $opt->{remote_config} && $opt->{path};
+
+  $util->log_warn(
+q{because of --remote-config the "path" defined in the specified profile will be ignored}
+  ) if $opt->{remote_config} && $opt->{profile};
+
   # part size for multipart upload.
   $PART_LIMIT_SIZE = $opt->{part_size} * 1024 * 1024;
 
@@ -524,9 +534,16 @@ sub get_schedule {
   $uri->path('storage/config');
 
   my $req = GET $uri;
-  my $res = _send_request($req);
+  my $res = _send_request($if);
+
+  if ( !$res->is_success ) {
+    $util->log_warn("WARNING: can't fetch storage config from b-datum");
+    exit(0);
+  }
 
   my $config = decode_json $res->content;
+
+  return unless $config->{use_remote_config};
 
   $path = join( q{;}, sort keys %{ $config->{include} } )
     if exists $config->{include} && ref $config->{include} eq 'HASH'
@@ -536,8 +553,16 @@ sub get_schedule {
     if exists $config->{exclude} && ref $config->{exclude} eq 'HASH'
     and scalar keys %{ $config->{exclude} };
 
-  if ( !$res->is_success ) {
-    $util->log_warn("WARNING: can't fetch storage config from b-datum");
+  if ( my $ignore_days = $config->{ignore_schedule_after_days} ) {
+    my $stat  = File::stat::stat( $util->make_control_file('lastbackup_file') );
+    my $mtime = $stat->mtime;
+
+    my $time_since_last_backup = time - $mtime;
+    my $day                    = 24 * 60 * 60;
+    if ( $ignore_schedule_after_days <= $time_since_last_backup / $day ) {
+
+    }
+
   }
 
 }
