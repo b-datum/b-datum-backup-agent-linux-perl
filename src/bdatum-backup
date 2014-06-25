@@ -67,7 +67,8 @@ my %metadata_map = (
   MTIME, => 'meta-mtime'
 );
 
-our ( $node_key, $partner_key, $path, @blacklist, $manifest );
+our ( $node_key, $partner_key, $path, @blacklist, $manifest, $backup_count,
+  $backup_start_time, $ignore_schedule );
 our ( $stage_dir, $configfile, $ua, $main_pid );
 our ( $usage, $run_lock_fh, $PART_LIMIT_SIZE, $config );
 
@@ -307,7 +308,7 @@ sub options {
     exit(0);
   }
 
-  # Check for incompatible options used with "remote-config"
+  # Check for incompatible options used with "--remote-config"
 
   $util->log_warn(
 "the path defined in --path will be ignored if remote configuration is set to be used"
@@ -316,6 +317,10 @@ sub options {
   $util->log_warn(
 q{because of --remote-config the "path" defined in the specified profile will be ignored}
   ) if $opt->{remote_config} && $opt->{profile};
+
+  $util->log_warn(
+q{because of --remote-config the time defined in --persistent_time will be ignored if remote config is enabled}
+  ) if $opt->{remote_config} && $opt->{persistent_time};
 
   # part size for multipart upload.
   $PART_LIMIT_SIZE = $opt->{part_size} * 1024 * 1024;
@@ -442,7 +447,26 @@ sub _reset_blacklist {
   return @blacklist;
 }
 
+sub wait_if_needed {
+
+  $ignore_schedule = 0, return
+    if $ignore_schedule;       # don't wait, start right away
+
+  return
+    unless ( defined $backup_start_time )
+    && ( $backup_start_time =~ /^\d{1,2}:\d{2}$/ );
+
+  while (1) {
+    my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
+      localtime(time);
+    my $current_time = "$hour:$min";
+    sleep(10) if $backup_start_time ne $current_time;
+  }
+}
+
 sub backup {
+
+  wait_if_needed();
 
   $util->log_debug("Node key: $node_key");
   $util->log_debug("Partner key: $partner_key");
@@ -527,6 +551,7 @@ sub backup {
 }
 
 sub get_schedule {
+  my $seconds_in_day = 24 * 60 * 60;
 
   $util->log_info("Fetching storage config from b-datum");
 
@@ -534,21 +559,28 @@ sub get_schedule {
   $uri->path('storage/config');
 
   my $req = GET $uri;
-  my $res = _send_request($if);
+  my $res = _send_request($req);
 
   if ( !$res->is_success ) {
     $util->log_warn("WARNING: can't fetch storage config from b-datum");
     exit(0);
   }
 
-  my $config = decode_json $res->content;
+  my $conf = decode_json $res->content;
 
-  return unless $config->{use_remote_config};
+  # ignore options setted in remote config
+  return
+    unless $config->{use_remote_config};
 
+  $backup_count = $conf->{backup_repeat}
+    if exists $conf->{backup_repeat} && defined $conf->{backup_repeat};
+
+  # using included dirs in config as backup paths
   $path = join( q{;}, sort keys %{ $config->{include} } )
     if exists $config->{include} && ref $config->{include} eq 'HASH'
     and scalar keys %{ $config->{include} };
 
+  # using excluded dirs in config as blacklist
   _reset_blacklist(), push @blacklist, keys %{ $config->{exclude} }
     if exists $config->{exclude} && ref $config->{exclude} eq 'HASH'
     and scalar keys %{ $config->{exclude} };
@@ -558,13 +590,31 @@ sub get_schedule {
     my $mtime = $stat->mtime;
 
     my $time_since_last_backup = time - $mtime;
-    my $day                    = 24 * 60 * 60;
-    if ( $ignore_schedule_after_days <= $time_since_last_backup / $day ) {
 
+    if ( $ignore_days <= $time_since_last_backup / $seconds_in_day ) {
+      $ignore_schedule = 1;
     }
-
   }
 
+  if ( my $repeat = $conf->{backup_repeat} ) {
+
+    # calculate apropriate interval
+    my $interval           = $seconds_in_day / $repeat;
+    my $backup_repeat_file = $util->make_control_file('backuprepeat');
+    my $fh                 = IO::File->new( $backup_repeat_file, 'w+' );
+    print $fh $interval;
+    $fh->close;
+    $opt->{persistent_time} = $interval;
+  }
+
+  if ( my $backup_schedule_time = $conf->{backup_schedule_time} ) {
+
+    # extracting hour, min e timezone from "hh:mm-z"
+    my ( $hour, $min, $tz ) =
+      $backup_schedule_time =~ /(\d{1,2}):(\d{2})((:?\-|\+)\d{2})/;
+    $hour              = $hour + $tz;    #calculate timezone;
+    $backup_start_time = "$hour:$min";
+  }
 }
 
 sub _get_files {
