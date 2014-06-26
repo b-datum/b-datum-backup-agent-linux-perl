@@ -3,7 +3,7 @@ b-datum (1.05) stable; urgency=low
   * Support for multiples dirs in the path parameter per profile
   * Support for remote config for dirs.
 
- -- Gabriel Andrade <gabriel@b-datum.com>  Thu, 26 Jun 02:56:00 -0300
+ -- Gabriel Andrade <gabriel@b-datum.com>  Thu, 26 Jun 2014 02:56:00 -0300
 
 b-datum (1.04) stable; urgency=low
 
