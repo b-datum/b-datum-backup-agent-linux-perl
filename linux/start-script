@@ -23,8 +23,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 EXEC=bdatum-backup
 DAEMON="/usr/bin/$EXEC"
-
-set -e
+PIDFILE=/var/run/$EXEC.pid
+DAEMONOPTS="-d"
 
 # Only start if we can find the postmaster.
 test -x $DAEMON ||
@@ -36,23 +36,65 @@ test -x $DAEMON ||
 	fi
 }
 
+start() {
+	echo -n "Starting $EXEC... "
+	#PID=`$DAEMON $DAEMONOPTS > /dev/null 2>&1 & echo $!`
+	$DAEMON $DAEMONOPTS
+	PID=`cat $PIDFILE`
+	if [ -z $PID ]; then
+		echo "FAIL"
+	else 
+		echo $PID > $PIDFILE
+		echo "OK"
+	fi
+}
+
+stop() {
+  	echo -n "Stopping $EXEC: "
+	PID=`cat $PIDFILE`
+	if [ -f $PIDFILE ]; then
+		kill -HUP $PID
+		echo "OK"
+		rm -f $PIDFILE
+	else
+		echo "FAIL -- pidfile not found"
+	fi
+}
+
+status() {
+	echo -n "Checking $EXEC..."
+	if [ -f $PIDFILE ]; then
+		PID=`cat $PIDFILE`
+		if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+			echo "Process dead but pidfile exists"
+		else
+			echo "Running"
+		fi
+	else
+		echo "Service not running"
+	fi
+}
+
+
 # Parse command line parameters.
 case $1 in
-  start)
-  	echo -n "Starting b-datum: "
-	$DAEMON 
-	echo "ok"
-	;;
-  stop)
-  	echo -n "Stopping b-datum: "
-	killall -HUP $EXEC
-	echo "ok
-	;;
-  *)
-  	# Print help
-	echo "Usage: $0 {start|stop}" 1>&2
-	exit 1
-	;;
+	status)
+		status
+		;;
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	*)
+		echo "Usage: $0 {status|start|stop|restart}" 1>&2
+		exit 1
+		;;
 esac
 
 exit 0
