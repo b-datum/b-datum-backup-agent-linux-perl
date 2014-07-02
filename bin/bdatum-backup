@@ -38532,8 +38532,8 @@ sub options {
     die "cannot fork" unless defined $main_pid;
     exit 0 if $main_pid != 0;
   
-    open $fh, '>', '/var/run/bdatum-backup.pid';
-    print $fh $$
+    open my $fh, '>', '/var/run/bdatum-backup.pid';
+    print $fh $$;
     close $fh;
   }
 
