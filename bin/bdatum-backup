@@ -38816,22 +38816,22 @@ sub get_schedule {
 
   # ignore options setted in remote config
   return
-    unless $config->{use_remote_config};
+    unless $conf->{use_remote_config};
 
   $backup_count = $conf->{backup_repeat}
     if exists $conf->{backup_repeat} && defined $conf->{backup_repeat};
 
   # using included dirs in config as backup paths
-  $path = join( q{;}, sort keys %{ $config->{include} } )
-    if exists $config->{include} && ref $config->{include} eq 'HASH'
-    and scalar keys %{ $config->{include} };
+  $path = join( q{;}, sort keys %{ $conf->{include} } )
+    if exists $conf->{include} && ref $conf->{include} eq 'HASH'
+    and scalar keys %{ $conf->{include} };
 
   # using excluded dirs in config as blacklist
-  _reset_blacklist(), push @blacklist, keys %{ $config->{exclude} }
-    if exists $config->{exclude} && ref $config->{exclude} eq 'HASH'
-    and scalar keys %{ $config->{exclude} };
+  _reset_blacklist(), push @blacklist, keys %{ $conf->{exclude} }
+    if exists $conf->{exclude} && ref $conf->{exclude} eq 'HASH'
+    and scalar keys %{ $conf->{exclude} };
 
-  if ( my $ignore_days = $config->{ignore_schedule_after_days} ) {
+  if ( my $ignore_days = $conf->{ignore_schedule_after_days} ) {
     my $stat  = File::stat::stat( $util->make_control_file('lastbackup_file') );
     my $mtime = $stat->mtime;
 
