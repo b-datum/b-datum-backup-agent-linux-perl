@@ -366,6 +366,9 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
     $node_key    = $config->{node_key};
     $partner_key = $config->{partner_key};
     $path        = $config->{path};
+    $opt->{remote_config} = $config->{remote_config} 
+        if $config->{remote_config};
+
     @blacklist   = map {
       my $r = $config->{blacklist}->{$_};
       eval { qr/$r/ }
