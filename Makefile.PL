@@ -28,3 +28,10 @@ WriteMakefile(
   PMLIBDIRS => $dir_libs,
 );
 
+sub MY::postamble {
+    q{
+    install:
+        cp linux/start-script /etc/init.d/b-datum
+};
+}
+

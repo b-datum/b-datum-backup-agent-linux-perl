@@ -52,6 +52,7 @@ rm -rf %{buildroot}
 /usr/bin/bdatum-backup
 /usr/bin/bdatum-config
 /usr/bin/bdatum-restore
+/etc/init.d/b-datum
 
 %doc Changes README.md
 
