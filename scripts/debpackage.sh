@@ -28,7 +28,7 @@ dh-make-perl $TARGET_DIR \
 	--packagename 'b-datum' \
 	--intrusive
 
-#cp $TARGET_DIR/linux/debian/postinst $TARGET_DIR/debian/postinst
+cp $TARGET_DIR/linux/debian/postinst $TARGET_DIR/debian/postinst
 cp $TARGET_DIR/linux/debian/watch $TARGET_DIR/debian/watch
 cp $TARGET_DIR/Changes $TARGET_DIR/debian/changelog
 (cd $TARGET_DIR && debuild --no-tgz-check -us -uc)
