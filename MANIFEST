@@ -13,5 +13,5 @@ src/bdatum-backup
 src/bdatum-restore
 src/header.pl
 MANIFEST
-linux/postinst
+linux/debian/postinst
 linux/b-datum-linux.spec
