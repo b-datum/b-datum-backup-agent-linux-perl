@@ -430,6 +430,8 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
   $util->set_partner_key($partner_key);
   $util->set_node_key($node_key);
 
+  &prepare_ua;
+
   if ( $opt->{remote_config} ) {
     get_schedule();
   }
@@ -473,16 +475,7 @@ sub wait_if_needed {
   }
 }
 
-sub backup {
-
-  wait_if_needed();
-
-  $util->log_debug("Node key: $node_key");
-  $util->log_debug("Partner key: $partner_key");
-  $util->log_debug("Path: $path");
-
-  &_check_already_running;
-
+sub prepare_ua {
   my $ssl_cache = IO::Socket::SSL::Session_Cache->new(10);
   my $context   = IO::Socket::SSL::SSL_Context->new(
     SSL_verify_mode   => 0,
@@ -548,7 +541,17 @@ sub backup {
     $ua->add_handler( "request_send",  sub { shift->dump; return } );
     $ua->add_handler( "response_done", sub { shift->dump; return } );
   }
+}
 
+sub backup {
+
+  wait_if_needed();
+
+  $util->log_debug("Node key: $node_key");
+  $util->log_debug("Partner key: $partner_key");
+  $util->log_debug("Path: $path");
+
+  &_check_already_running;
   &check_alive();
 
   start();
