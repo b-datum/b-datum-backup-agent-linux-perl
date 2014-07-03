@@ -424,7 +424,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
     or !$util->validate_key($partner_key)
   )
   {
-    $util->log_error( "Required option missing -- node_key or partner_key.", 64 );
+    $util->log_error( "Required option missing: node_key or partner_key.", 64 );
   }
 
   $util->set_partner_key($partner_key);
@@ -436,7 +436,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
 
   if (!$util->validate_path($path) )
   {
-    $util->log_error( "Required option missing -- path.", 64 );
+    $util->log_error( "Required option missing: path.", 64 );
   }
 
   $util->set_path($path);

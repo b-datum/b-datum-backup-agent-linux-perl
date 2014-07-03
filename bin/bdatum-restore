@@ -36943,7 +36943,7 @@ $fatpacked{"bdatum/Util.pm"} = <<'BDATUM_UTIL';
   
   sub validate_key {
       my $self = shift;
-      my $key = shift || $self->log_error( "Required option missing.", 64 );
+      my $key = shift || $self->log_error( "Invalid partner or node key", 64);
       my $val = $key =~ /^[a-zA-Z0-9]{20}$/ ? 1 : 0;
       $self->log_error("The key must be [a-zA-Z0-9]{20} -- $key") unless $val;
       return $val;
