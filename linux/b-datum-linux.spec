@@ -41,7 +41,8 @@ Provides tools for backup and restore files with b-datum.com
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
-
+mkdir -p %{buildroot}/etc/init.d
+mv %{buildroot}/bin %{buildroot}/etc/init.d
 
 %clean
 rm -rf %{buildroot}
