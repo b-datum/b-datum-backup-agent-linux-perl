@@ -4,3 +4,4 @@ if [ ! -f /etc/bdatum/backup.conf ] ; then
 	/usr/bin/bdatum-config
 fi
 
+mv /usr/bin/b-datum.init /etc/init.d/b-datum
