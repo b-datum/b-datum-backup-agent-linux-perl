@@ -42,7 +42,7 @@ Provides tools for backup and restore files with b-datum.com
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
 mkdir -p %{buildroot}/etc/init.d
-mv %{buildroot}/bin/b-datum.init %{buildroot}/etc/init.d/b-datum
+mv %{buildroot}/usr/bin/b-datum.init %{buildroot}/etc/init.d/b-datum
 
 %clean
 rm -rf %{buildroot}
