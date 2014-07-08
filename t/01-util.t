@@ -16,7 +16,7 @@ ok($util->validate_key('abcdefghijlmnopqrstu'), 'validate key with letters');
 ok(!$util->validate_key("!@#"), "can't validate key with !@#");
 
 ok($util->validate_path($Bin), "validate path with $Bin");
-ok(!$util->validate_path("$Bin/$Script"), "can't validate path with $Bin/$Script");
+ok($util->validate_path("$Bin;$Bin"), "validate path with $Bin");
 
 ok(!$util->make_control_file('foo'), "Try to set control_file without partner key, node key and path");
 
