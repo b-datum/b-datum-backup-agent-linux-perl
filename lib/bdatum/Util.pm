@@ -66,9 +66,13 @@ sub validate_key {
 sub validate_path {
     my $self = shift;
     my $path = shift || return 0;
-    my $val = -d $path and -r $path;
-    $self->log_error("The directory name is invalid -- $path") unless $val;
-    return $val;
+    map {
+        my $path = $_;
+        my $val = -d $path and -r $path;
+        $self->log_error("The directory name is invalid -- $path") unless $val;
+    } split /;/, $path;
+
+    return $path;
 }
 
 sub validate_basedir {
