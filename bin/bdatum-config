@@ -50,7 +50,23 @@ function _get_remote_config() {
 }
 
 function _get_pathdir() {
-	read -p "Enter backup directory :" PATHDIR
+	read -p "Enter backup directory :" TMPPATHDIR
+	
+	if [ ! -d $TMPPATHDIR ] ; then
+		echo "Warning: $TMPPATHDIR is not a directory."
+	fi
+	
+	if [ "$PATHDIR" ] ; then
+		PATHDIR="$TMPPATHDIR;$PATHDIR"
+	else 
+		PATHDIR=$TMPPATHDIR
+	fi
+
+	read -p "Do you want to add another directory ? (y/n):" choice
+	case "$choice" in
+		y|Y ) _get_pathdir ;;
+	esac
+
 }
 
 function _write_default_config() {
@@ -117,14 +133,10 @@ while [ 1 ] ; do
 done
 
 _get_remote_config
-echo $REMOTE_CONFIG
-while [ "$REMOTE_CONFIG" -eq "0" ] ; do
+
+if [ "$REMOTE_CONFIG" -eq "0" ] ; then
 	_get_pathdir
-	if [ -d $PATHDIR ] ; then
-		break
-	fi
-	_ask_to_continue "This is not a directory."
-done
+fi
 
 _save_tmpfile
 
