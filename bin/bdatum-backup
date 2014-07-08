@@ -38371,7 +38371,7 @@ sub run {
     if ($@) {
       $util->log_error($@);
     }
-    last unless $opt->{persistent};
+    last unless $opt->{persistent} or $opt->{daemon};
     &check_alive;
     sleep( $opt->{persistent_time} );
   }
