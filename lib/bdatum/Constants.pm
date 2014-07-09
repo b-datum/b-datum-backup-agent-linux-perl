@@ -18,7 +18,7 @@ use constant GID     => 3;
 use constant UMASK   => 4;
 use constant SYMLINK => 5;
 
-# Errors for alive
+# Status code for alive
 # 1xx - Status
 # 2xx - Success
 # 3xx - Local Error
