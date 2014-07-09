@@ -57,7 +57,8 @@ our $util = bdatum::Util->new;
 # ,=> to avoid fat comma stringification, the keys
 # need to be integers
 my %metadata_map = (
-  UID, => 'meta-uid',
+  UID
+  , => 'meta-uid',
   GID
   , => 'meta-gid',
   UMASK
@@ -300,7 +301,7 @@ sub options {
     $main_pid = fork();
     die "cannot fork" unless defined $main_pid;
     exit 0 if $main_pid != 0;
-  
+
     open my $fh, '>', '/var/run/bdatum-backup.pid';
     print $fh $$;
     close $fh;
@@ -363,13 +364,13 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
       ? $config_all->{$profile}
       : $config_all;
 
-    $node_key    = $config->{node_key};
-    $partner_key = $config->{partner_key};
-    $path        = $config->{path};
-    $opt->{remote_config} = $config->{remote_config} 
-        if $config->{remote_config};
+    $node_key             = $config->{node_key};
+    $partner_key          = $config->{partner_key};
+    $path                 = $config->{path};
+    $opt->{remote_config} = $config->{remote_config}
+      if $config->{remote_config};
 
-    @blacklist   = map {
+    @blacklist = map {
       my $r = $config->{blacklist}->{$_};
       eval { qr/$r/ }
         or die qq{Blacklist item "$_" is not a valid regex};
@@ -424,8 +425,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
   $path        = $opt->{path}        if $opt->{path};
 
   if ( !$util->validate_key($node_key)
-    or !$util->validate_key($partner_key)
-  )
+    or !$util->validate_key($partner_key) )
   {
     $util->log_error( "Required option missing: node_key or partner_key.", 64 );
   }
@@ -439,8 +439,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
     get_schedule();
   }
 
-  if (!$util->validate_path($path) )
-  {
+  if ( !$util->validate_path($path) ) {
     $util->log_error( "Required option missing: path.", 64 );
   }
 

@@ -44,14 +44,14 @@ use Config::Any::INI;
 use bdatum::Constants ':all';
 use bdatum::Util;
 
-use version; 
+use version;
 our $VERSION = qv('__VERSION_BY_SCRIPT__');
 
 our $util = bdatum::Util->new;
 
-our ( $node_key, $partner_key, $path );
-our ( $configfile, $ua, $pm );
-our ( $usage, $run_lock_fh );
+our ( $node_key,   $partner_key, $path );
+our ( $configfile, $ua,          $pm );
+our ( $usage,      $run_lock_fh );
 
 our $opt        = {};
 our $parent_pid = $$;
@@ -235,10 +235,10 @@ sub options {
   &show_version if $opt->{version};
   &show_help    if $opt->{help};
 
-  $util->set_debug(1) if $opt->{debug};
+  $util->set_debug(1)  if $opt->{debug};
   $util->set_daemon(1) if $opt->{daemon};
 
-  if (!$opt->{basedir}) {
+  if ( !$opt->{basedir} ) {
     $util->log_error( "Required option missing. (basedir)", 64 );
   }
 
@@ -376,7 +376,7 @@ sub _get_files {
 
   $uri->query_form(
     path => ( $opt->{remote_prefix} || '/' ),
-    ($opt->{remote_ts} ? ( ts => $opt->{remote_ts} ) : () ),
+    ( $opt->{remote_ts} ? ( ts => $opt->{remote_ts} ) : () ),
     flatten      => 1,
     _for_restore => 1,
   );

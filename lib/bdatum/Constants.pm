@@ -22,12 +22,12 @@ require Exporter;
 
 our @ISA         = qw(Exporter);
 our %EXPORT_TAGS = (
-    all => [
-        qw/
-          BASE_URL BASE_DIR LIMIT_PARTS
-          MTIME ETAG UID GID UMASK SYMLINK
-          /
-    ]
+  all => [
+    qw/
+      BASE_URL BASE_DIR LIMIT_PARTS
+      MTIME ETAG UID GID UMASK SYMLINK
+      /
+  ]
 );
 
 our @EXPORT_OK = @{ $EXPORT_TAGS{'all'} };
