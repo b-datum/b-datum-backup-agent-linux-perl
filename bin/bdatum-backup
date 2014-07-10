@@ -38890,8 +38890,9 @@ sub wait_if_needed {
   while (1) {
     my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
       localtime(time);
-    my $current_time = "$hour:$min";
-    sleep(10) if $backup_start_time ne $current_time;
+    my $current_time = sprintf("%02d:%02d", $hour, $min);
+    sleep(10) and next if $backup_start_time ne $current_time;
+    last;
   }
 }
 
@@ -39044,7 +39045,7 @@ sub get_schedule {
     # extracting hour, min e timezone from "hh:mm-z"
     my ( $hour, $min, $tz ) =
       $backup_schedule_time =~ /(\d{1,2}):(\d{2})((\-|\+?)\d{1,2})/;
-    $hour              = $hour + $tz;    #calculate timezone;
+    #$hour              = $hour + $tz;    #calculate timezone;
     $backup_start_time = "$hour:$min";
   }
 }
