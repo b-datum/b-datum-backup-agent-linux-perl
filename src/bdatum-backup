@@ -51,7 +51,6 @@ use bdatum::Util;
 use version;
 
 our $VERSION = qv('__VERSION_BY_SCRIPT__');
-
 our $util = bdatum::Util->new;
 
 # ,=> to avoid fat comma stringification, the keys
@@ -471,13 +470,25 @@ sub wait_if_needed {
     unless ( defined $backup_start_time )
     && ( $backup_start_time =~ /^\d{1,2}:\d{2}$/ );
 
+  my $MAX_TRY = 300;
+  my $try = 0;
+
   while (1) {
     my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
       localtime(time);
     my $current_time = sprintf("%02d:%02d", $hour, $min);
+   
+    $try++;
+    if ($try == $MAX_TRY) {
+        &get_schedule();
+        $try = 0;
+    }
+
     sleep(10) and next if $backup_start_time ne $current_time;
     last;
   }
+
+  return 0;
 }
 
 sub prepare_ua {
