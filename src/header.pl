@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# Copyright (c) 2013 b-datum, http://www.b-datum.com
+# Copyright (c) 2013-2014 b-datum, http://www.b-datum.com
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
