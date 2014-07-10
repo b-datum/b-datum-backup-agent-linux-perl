@@ -131,6 +131,8 @@ sub _check_if_has_s3 {
 sub run {
   &options;
   while (1) {
+    get_schedule() if $opt->{remote_config};
+
     &setup_manifest;
     eval { &backup; };
 
