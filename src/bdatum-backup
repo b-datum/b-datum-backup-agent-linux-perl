@@ -584,7 +584,7 @@ sub get_schedule {
 
   # ignore options setted in remote config
   return
-    unless $conf->{use_remote_config};
+    unless $conf->{remote_config};
 
   $backup_count = $conf->{backup_repeat}
     if exists $conf->{backup_repeat} && defined $conf->{backup_repeat};
