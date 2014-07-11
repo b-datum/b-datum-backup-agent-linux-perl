@@ -51,7 +51,7 @@ use bdatum::Util;
 use version;
 
 our $VERSION = qv('__VERSION_BY_SCRIPT__');
-our $util = bdatum::Util->new;
+our $util    = bdatum::Util->new;
 
 # ,=> to avoid fat comma stringification, the keys
 # need to be integers
@@ -148,7 +148,7 @@ sub run {
 }
 
 sub send_report {
-  my $code = shift;
+  my $code    = shift;
   my $message = shift;
 
   $util->log_info("Sending report status to b-datum");
@@ -164,7 +164,6 @@ sub send_report {
   }
 
 }
-
 
 sub check_alive {
   $util->log_info("Sending alive to b-datum");
@@ -491,17 +490,17 @@ sub wait_if_needed {
     && ( $backup_start_time =~ /^\d{1,2}:\d{2}$/ );
 
   my $MAX_TRY = 300;
-  my $try = 0;
+  my $try     = 0;
 
   while (1) {
     my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
       localtime(time);
-    my $current_time = sprintf("%02d:%02d", $hour, $min);
-   
+    my $current_time = sprintf( "%02d:%02d", $hour, $min );
+
     $try++;
-    if ($try == $MAX_TRY) {
-        &get_schedule() if $opt->{remote_config};
-        $try = 0;
+    if ( $try == $MAX_TRY ) {
+      &get_schedule() if $opt->{remote_config};
+      $try = 0;
     }
 
     sleep(10) and next if $backup_start_time ne $current_time;
@@ -660,6 +659,7 @@ sub get_schedule {
     # extracting hour, min e timezone from "hh:mm-z"
     my ( $hour, $min, $tz ) =
       $backup_schedule_time =~ /(\d{1,2}):(\d{2})((\-|\+?)\d{1,2})/;
+
     #$hour              = $hour + $tz;    #calculate timezone;
     $backup_start_time = "$hour:$min";
   }
