@@ -461,6 +461,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
 
   if ( !$util->validate_path($path) ) {
     $util->log_error( "Required option missing: path.", 64 );
+    &send_report(ERR_NO_PATH, $path);
   }
 
   $util->set_path($path);
