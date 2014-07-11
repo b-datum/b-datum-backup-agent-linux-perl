@@ -602,6 +602,7 @@ sub get_schedule {
   my $seconds_in_day = 24 * 60 * 60;
 
   $util->log_info("Fetching storage config from b-datum");
+  &send_report(OK_UPDATE_CONFIG);
 
   my $uri = URI->new(BASE_URL);
   $uri->path('storage/config');
