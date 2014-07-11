@@ -146,6 +146,25 @@ sub run {
   &_remove_lock_running;
 }
 
+sub send_report {
+  my $code = shift;
+  my $message = shift;
+
+  $util->log_info("Sending report status to b-datum");
+
+  my $uri = URI->new(BASE_URL);
+  $uri->path('report');
+
+  my $req = POST $uri, code => $code, message => $message;
+  my $res = _send_request($req);
+
+  if ( !$res->is_success ) {
+    $util->log_warn("WARNING: can't send report to b-datum");
+  }
+
+}
+
+
 sub check_alive {
   $util->log_info("Sending alive to b-datum");
 
