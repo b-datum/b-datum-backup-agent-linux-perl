@@ -38896,7 +38896,7 @@ sub wait_if_needed {
    
     $try++;
     if ($try == $MAX_TRY) {
-        &get_schedule();
+        &get_schedule() if $opt->{remote_config};
         $try = 0;
     }
 

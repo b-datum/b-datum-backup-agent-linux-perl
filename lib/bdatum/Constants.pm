@@ -26,7 +26,6 @@ use constant SYMLINK => 5;
 
 use constant ONLINE => 100;              # I'm here
 use constant BACKUP => 101;              # Doing..
-use constant TOO_MANY_TRY => 111;        # Too many times try to send something.
 
 use constant OK_ALL => 200;              # Withour problem
 use constant OK_UPDATE_CONFIG => 201;    # Configuração atualizada
@@ -39,6 +38,7 @@ use constant ERR_NO_PERL_S3 => 340;      # need to install Net::Amazon::S3
 
 use constant ERR_PART_SIZE => 401;       # part_size option need to be > 5 or < 500
 use constant ERR_PATH => 402;            # No path to backup
+use constant ERR_TOO_MANY_TRY => 403;    # Too many times try to send something.
 
 require Exporter;
 
