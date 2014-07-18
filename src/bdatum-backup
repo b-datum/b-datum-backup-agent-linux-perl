@@ -56,8 +56,7 @@ our $util    = bdatum::Util->new;
 # ,=> to avoid fat comma stringification, the keys
 # need to be integers
 my %metadata_map = (
-  UID
-  , => 'meta-uid',
+  UID, => 'meta-uid',
   GID
   , => 'meta-gid',
   UMASK
@@ -148,6 +147,7 @@ sub run {
 }
 
 sub send_report {
+
   my $code    = shift;
   my $message = shift;
 
@@ -374,7 +374,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
     my $mode = sprintf( '%04o', $st->mode & 07777 );
     if ( $mode ne '0400' ) {
       $util->log_error( "Please run 'chmod 0400 $configfile'", 78 );
-      &send_report(ERR_PERM_ETC, $configfile);
+      &send_report( ERR_PERM_ETC, $configfile );
     }
 
     my $config_all = Config::Any::INI->load($configfile);
@@ -462,7 +462,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
 
   if ( !$util->validate_path($path) ) {
     $util->log_error( "Required option missing: path.", 64 );
-    &send_report(ERR_NO_PATH, $path);
+    &send_report( ERR_NO_PATH, $path );
   }
 
   $util->set_path($path);
@@ -645,6 +645,8 @@ sub get_schedule {
       $ignore_schedule = 1;
     }
   }
+
+  $util->set_path($path);
 
   if ( my $repeat = $conf->{backup_repeat} ) {
 
