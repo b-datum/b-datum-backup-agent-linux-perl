@@ -38580,7 +38580,7 @@ sub run {
 }
 
 sub send_report {
-
+  return;
   my $code    = shift;
   my $message = shift;
 
