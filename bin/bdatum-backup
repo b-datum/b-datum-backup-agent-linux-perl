@@ -38924,8 +38924,10 @@ sub wait_if_needed {
     unless ( defined $backup_start_time )
     && ( $backup_start_time =~ /^\d{1,2}:\d{2}$/ );
 
-  my $MAX_TRY = 300;
-  my $try     = 0;
+  # 60 tries with 10s sleep == 600s == 10min between calls to get_schedule()
+  my $MAX_TRY = 60; 
+
+  my $try = 0;
 
   while (1) {
     my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
