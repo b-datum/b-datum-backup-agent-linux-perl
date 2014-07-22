@@ -147,7 +147,6 @@ sub run {
 }
 
 sub send_report {
-  return;
   my $code    = shift;
   my $message = shift;
 
@@ -156,7 +155,7 @@ sub send_report {
   my $uri = URI->new(BASE_URL);
   $uri->path('report');
 
-  my $req = POST $uri, code => $code, message => $message;
+  my $req = POST $uri, [code => $code, message => $message];
   my $res = _send_request($req);
 
   if ( !$res->is_success ) {
@@ -374,7 +373,6 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
     my $mode = sprintf( '%04o', $st->mode & 07777 );
     if ( $mode ne '0400' ) {
       $util->log_error( "Please run 'chmod 0400 $configfile'", 78 );
-      &send_report( ERR_PERM_ETC, $configfile );
     }
 
     my $config_all = Config::Any::INI->load($configfile);
@@ -461,8 +459,8 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
   }
 
   if ( !$util->validate_path($path) ) {
+    &send_report( ERR_NO_PATH, join(';', $path) );
     $util->log_error( "Required option missing: path.", 64 );
-    &send_report( ERR_NO_PATH, $path );
   }
 
   $util->set_path($path);
@@ -1252,7 +1250,6 @@ sub _check_duplicate {
 }
 
 sub _send_request {
-
   my $req = shift;
   my $res = $ua->request($req);
   if ( !$res->is_success ) {
