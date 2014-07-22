@@ -68,7 +68,8 @@ sub validate_path {
   map {
     my $path = $_;
     my $val = -d $path and -r $path;
-    $self->log_error("The directory name is invalid -- $path") unless $val;
+    return 0 unless $val;
+    #$self->log_error("The directory name is invalid -- $path") unless $val;
   } split /;/, $path;
 
   return $path;
