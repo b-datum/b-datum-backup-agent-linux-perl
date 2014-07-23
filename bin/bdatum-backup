@@ -36885,6 +36885,7 @@ $fatpacked{"bdatum/Constants.pm"} = <<'BDATUM_CONSTANTS';
   use constant ERR_PART_SIZE    => 401; # part_size option need to be > 5 or < 500
   use constant ERR_PATH         => 402; # No path to backup
   use constant ERR_TOO_MANY_TRY => 403; # Too many times try to send something.
+  use constant ERR_SEND_FILE    => 404; # Error to send a file.
   
   require Exporter;
   
@@ -36896,7 +36897,7 @@ $fatpacked{"bdatum/Constants.pm"} = <<'BDATUM_CONSTANTS';
         MTIME ETAG UID GID UMASK SYMLINK
         ONLINE BACKUP OK_ALL OK_UPDATE_CONFIG
         ERR_PERM_ETC ERR_NO_PATH ERR_PATH_PERM ERR_FILE_PERM ERR_NO_PERL_S3
-        ERR_PART_SIZE ERR_PATH ERR_TOO_MANY_TRY
+        ERR_PART_SIZE ERR_PATH ERR_TOO_MANY_TRY ERR_SEND_FILE
   
         /
     ]
@@ -38542,8 +38543,8 @@ sub _unauthorized_abort {
 
 sub _check_if_has_s3 {
   return if $CAN_DO_S3;
+  &send_report(ERR_NO_PERL_S3, 'Net::Amazon::S3');
   $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
-  &send_report(ERR_NO_PERL_S3);
   exit 1;
 }
 &run;
@@ -38571,7 +38572,11 @@ sub send_report {
   my $code    = shift;
   my $message = shift;
 
-  $util->log_info("Sending report status to b-datum");
+  my $report_pid = fork();
+  die "cannot fork" unless defined $report_pid;
+  return if $report_pid != 0;
+
+  $util->log_debug("Sending report status to b-datum");
 
   my $uri = URI->new(BASE_URL);
   $uri->path('report');
@@ -38580,9 +38585,9 @@ sub send_report {
   my $res = _send_request($req);
 
   if ( !$res->is_success ) {
-    $util->log_warn("WARNING: can't send report to b-datum");
+    $util->log_debug("WARNING: can't send report to b-datum");
   }
-
+  exit 0;
 }
 
 sub check_alive {
@@ -38878,7 +38883,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
   if ( $opt->{remote_config} ) {
     get_schedule();
   }
-
+  
   if ( !$util->validate_path($path) ) {
     &send_report( ERR_NO_PATH, join(';', $path) );
     $util->log_error( "Required option missing: path.", 64 );
@@ -39024,7 +39029,7 @@ sub get_schedule {
   my $seconds_in_day = 24 * 60 * 60;
 
   $util->log_info("Fetching storage config from b-datum");
-  &send_report(OK_UPDATE_CONFIG);
+  #&send_report(OK_UPDATE_CONFIG);
 
   my $uri = URI->new(BASE_URL);
   $uri->path('storage/config');
@@ -39099,7 +39104,10 @@ sub _get_files {
 
   return File::Next::everything(
     {
-      error_handler => sub { $util->log_error(@_); },
+      error_handler => sub { 
+          &send_report(ERR_SEND_FILE, @_);
+          $util->log_error(@_); 
+          },
 
       # show symlinks
       follow_symlinks => 1,

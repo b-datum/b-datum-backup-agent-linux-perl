@@ -121,7 +121,7 @@ sub _unauthorized_abort {
 
 sub _check_if_has_s3 {
   return if $CAN_DO_S3;
-  &send_report(ERR_NO_PERL_S3);
+  &send_report(ERR_NO_PERL_S3, 'Net::Amazon::S3');
   $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
   exit 1;
 }
@@ -682,7 +682,10 @@ sub _get_files {
 
   return File::Next::everything(
     {
-      error_handler => sub { $util->log_error(@_); },
+      error_handler => sub { 
+          &send_report(ERR_SEND_FILE, @_);
+          $util->log_error(@_); 
+          },
 
       # show symlinks
       follow_symlinks => 1,
