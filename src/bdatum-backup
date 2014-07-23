@@ -121,8 +121,8 @@ sub _unauthorized_abort {
 
 sub _check_if_has_s3 {
   return if $CAN_DO_S3;
-  $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
   &send_report(ERR_NO_PERL_S3);
+  $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
   exit 1;
 }
 &run;
@@ -150,7 +150,11 @@ sub send_report {
   my $code    = shift;
   my $message = shift;
 
-  $util->log_info("Sending report status to b-datum");
+  my $report_pid = fork();
+  die "cannot fork" unless defined $report_pid;
+  return if $report_pid != 0;
+
+  $util->log_debug("Sending report status to b-datum");
 
   my $uri = URI->new(BASE_URL);
   $uri->path('report');
@@ -159,9 +163,9 @@ sub send_report {
   my $res = _send_request($req);
 
   if ( !$res->is_success ) {
-    $util->log_warn("WARNING: can't send report to b-datum");
+    $util->log_debug("WARNING: can't send report to b-datum");
   }
-
+  exit 0;
 }
 
 sub check_alive {
@@ -457,7 +461,7 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
   if ( $opt->{remote_config} ) {
     get_schedule();
   }
-
+  
   if ( !$util->validate_path($path) ) {
     &send_report( ERR_NO_PATH, join(';', $path) );
     $util->log_error( "Required option missing: path.", 64 );
@@ -603,7 +607,7 @@ sub get_schedule {
   my $seconds_in_day = 24 * 60 * 60;
 
   $util->log_info("Fetching storage config from b-datum");
-  &send_report(OK_UPDATE_CONFIG);
+  #&send_report(OK_UPDATE_CONFIG);
 
   my $uri = URI->new(BASE_URL);
   $uri->path('storage/config');
