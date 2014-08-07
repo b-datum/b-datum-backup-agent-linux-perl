@@ -299,7 +299,7 @@ sub options {
 
     "part_size=i"   => \$opt->{part_size},
     "remote-config" => \$opt->{remote_config},
-    "use-stage"      => \$opt->{use_stage},
+    "use-stage"     => \$opt->{use_stage},
 
     "version|v" => \$opt->{version},
     "debug"     => \$opt->{debug},
@@ -808,9 +808,14 @@ sub start {
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
-#      ( unlink( $change_specs->{stage_file} )
-#          || die
-#          qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
+      if ($opt->{use_stage} && $change_specs->{stage_file} && -e $change_specs->{stage_file} && !-l $change_specs->{stage_file}) {
+        $util->log_info("Remote file from stage: $change_specs->{stage_file}");
+        unlink ( $change_specs->{stage_file} );
+      }
+
+#     ( unlink( $change_specs->{stage_file} )
+#         || die
+#         qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
 #        if exists $change_specs->{stage_file};
 #    #    && -e $change_specs->{stage_file}
 #    #    && !-l $change_specs->{stage_file};
@@ -900,10 +905,10 @@ sub get_changes {
     or return;
 
   my $sfile = $file;
-#  my $sfile =
-#    -l $file
-#    ? $file
-#    : _link_to_stage($file);    # no need to move the symlink itself
+  my $sfile =
+    -l $file
+    ? $file
+    : _link_to_stage($file);    # no need to move the symlink itself
   my $etag = -l $file ? md5_hex('') : file_md5_hex($sfile);
   my @modified_fields = ();
 
@@ -1053,12 +1058,7 @@ sub _send_multipart {
 
   # init
   my $full_etag = $etag;
-  my $sfile =
-    -l $file
-    ? $file
-    : _link_to_stage($file);    # no need to move the symlink itself
-
-#my $sfile     = $changes->{stage_file};
+  my $sfile     = $changes->{stage_file};
 
   $uri->query_form( path => "$file", multipart => 1 );
   my $req       = POST $uri, Etag => $full_etag;
@@ -1121,8 +1121,6 @@ sub _send_multipart {
   $util->log_info("finish upload multipart to $file");
 
   _write_to_manifest( $manifest, "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
-
-  unlink( $sfile ) if $opt->{use_stage};
 
   return 1;
 
