@@ -39263,9 +39263,6 @@ FILE: while ( defined( my $file = $files->() ) ) {
       &_write_lastbackup($file);
     }
 
-    # here, we go.
-    $util->log_info("queuing: $file");
-
     if ( -d $file ) {
       $cache{"$file/"} = [];
       if ( is_folder_empty($file) ) {
@@ -39279,6 +39276,15 @@ FILE: while ( defined( my $file = $files->() ) ) {
     my @previous_attrs = @{ $cache{$file} || [] };
 
     my $change_specs = get_changes( $file, \@previous_attrs );
+
+    if (!$change_specs->{modified_fields}) {
+        $util->log_debug("Skipping file: $file (no changes)");
+        next;
+    }
+
+    # here, we go.
+    $util->log_info("queuing: $file");
+
 
     $cache{$file} = $change_specs->{attributes};
 
