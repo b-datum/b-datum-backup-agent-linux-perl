@@ -38679,6 +38679,7 @@ Usage: bdatum-backup [options] [...]
     --part_size            Part size in megabytes of multipart upload (default: 5)
 
     --remote-config        Uses storage policy config, implies that --profile would never be evaluated (default: false)
+    --use-stage            copy big-files (multipart) to a stage area.
 
     -v,--version           output version information and exit
     --debug                debug mode
@@ -38720,6 +38721,7 @@ sub options {
 
     "part_size=i"   => \$opt->{part_size},
     "remote-config" => \$opt->{remote_config},
+    "use-stage"      => \$opt->{use_stage},
 
     "version|v" => \$opt->{version},
     "debug"     => \$opt->{debug},
@@ -39542,7 +39544,7 @@ sub _send_multipart {
 
   _write_to_manifest( $manifest, "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
 
-  unlink( $sfile );
+  unlink( $sfile ) if $opt->{use_stage};
 
   return 1;
 
@@ -39829,6 +39831,9 @@ sub _stage_file {
 
 sub _link_to_stage {
   my $file       = shift;
+  
+  return $file unless $opt->{use_stage};
+
   my $stage_file = _stage_file($file);
   copy( $file, $stage_file ) or die "Copy failed: $!";
   return $stage_file;
