@@ -38680,7 +38680,7 @@ Usage: bdatum-backup [options] [...]
 
     --remote-config        Uses storage policy config, implies that --profile would never be evaluated (default: false)
 
-    -v,--verbose           verbose mode
+    -v,--version           output version information and exit
     --debug                debug mode
     -h,--help              print usage message and exit
 
@@ -38722,7 +38722,6 @@ sub options {
     "remote-config" => \$opt->{remote_config},
 
     "version|v" => \$opt->{version},
-    "verbose"   => \$opt->{verbose},
     "debug"     => \$opt->{debug},
     "help"      => \$opt->{help},
   ) or &show_help(1);
@@ -39000,7 +38999,7 @@ sub prepare_ua {
   $ua->add_handler( request_prepare =>
       sub { shift->authorization_basic( $node_key, $partner_key ); } );
 
-  if ( $opt->{verbose} ) {
+  if ( $opt->{debug} ) {
     $ua->add_handler( "request_send",  sub { shift->dump; return } );
     $ua->add_handler( "response_done", sub { shift->dump; return } );
   }
@@ -39229,12 +39228,12 @@ sub start {
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
-      ( unlink( $change_specs->{stage_file} )
-          || die
-          qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
-        if exists $change_specs->{stage_file}
-        && -e $change_specs->{stage_file}
-        && !-l $change_specs->{stage_file};
+#      ( unlink( $change_specs->{stage_file} )
+#          || die
+#          qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
+#        if exists $change_specs->{stage_file};
+#    #    && -e $change_specs->{stage_file}
+#    #    && !-l $change_specs->{stage_file};
 
     }
   );
@@ -39320,10 +39319,11 @@ sub get_changes {
   my $stat = ( -l $file ? File::stat::lstat($file) : File::stat::stat($file) )
     or return;
 
-  my $sfile =
-    -l $file
-    ? $file
-    : _link_to_stage($file);    # no need to move the symlink itself
+  my $sfile = $file;
+#  my $sfile =
+#    -l $file
+#    ? $file
+#    : _link_to_stage($file);    # no need to move the symlink itself
   my $etag = -l $file ? md5_hex('') : file_md5_hex($sfile);
   my @modified_fields = ();
 
@@ -39473,7 +39473,12 @@ sub _send_multipart {
 
   # init
   my $full_etag = $etag;
-  my $sfile     = $changes->{stage_file};
+  my $sfile =
+    -l $file
+    ? $file
+    : _link_to_stage($file);    # no need to move the symlink itself
+
+#my $sfile     = $changes->{stage_file};
 
   $uri->query_form( path => "$file", multipart => 1 );
   my $req       = POST $uri, Etag => $full_etag;
@@ -39536,6 +39541,8 @@ sub _send_multipart {
   $util->log_info("finish upload multipart to $file");
 
   _write_to_manifest( $manifest, "+$file\n+${\(-s $sfile)}\n+$full_etag\n\n" );
+
+  unlink( $sfile );
 
   return 1;
 
