@@ -258,7 +258,7 @@ Usage: bdatum-backup [options] [...]
 
     --remote-config        Uses storage policy config, implies that --profile would never be evaluated (default: false)
 
-    -v,--verbose           verbose mode
+    -v,--version           output version information and exit
     --debug                debug mode
     -h,--help              print usage message and exit
 
@@ -300,7 +300,6 @@ sub options {
     "remote-config" => \$opt->{remote_config},
 
     "version|v" => \$opt->{version},
-    "verbose"   => \$opt->{verbose},
     "debug"     => \$opt->{debug},
     "help"      => \$opt->{help},
   ) or &show_help(1);
@@ -578,7 +577,7 @@ sub prepare_ua {
   $ua->add_handler( request_prepare =>
       sub { shift->authorization_basic( $node_key, $partner_key ); } );
 
-  if ( $opt->{verbose} ) {
+  if ( $opt->{debug} ) {
     $ua->add_handler( "request_send",  sub { shift->dump; return } );
     $ua->add_handler( "response_done", sub { shift->dump; return } );
   }
