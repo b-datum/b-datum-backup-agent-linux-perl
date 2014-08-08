@@ -39503,8 +39503,15 @@ sub _send_multipart {
   my $i = 1;
   my @parts;
 
+  my $last_md5 = file_md5_hex($sfile);
+
   while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
     $util->log_info("sending part $i of $file");
+    
+    my $current_md5 = file_md5_hex($sfile);
+    if ($current_md5 ne $last_md5) {
+        die "Detect change in the file: $sfile";
+    }
 
     my $uri = URI->new(BASE_URL);
     $uri->path('storage');
