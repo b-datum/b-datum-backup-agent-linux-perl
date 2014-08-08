@@ -855,7 +855,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
     my $change_specs = get_changes( $file, \@previous_attrs );
 
-    if (!$change_specs->{modified_fields}) {
+    if ($cache{$file} && !$change_specs->{modified_fields}) {
         $util->log_debug("Skipping file: $file (no changes)");
         next;
     }
