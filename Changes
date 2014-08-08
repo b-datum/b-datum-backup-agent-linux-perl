@@ -1,3 +1,12 @@
+b-datum (1.06) stable; urgency=high
+
+  * Fixed queuing, skipping file with no changes
+  * New option, --use-stage and copy files to an area of stage, before the backup
+  * --verbose and --debug is now just --debug
+  * send a report with cause if we have problem to send a file
+
+ -- Thiago Rondon <thiago@b-datum.com>,  Thu, 7 Aug 2014 21:31:00 -0300
+
 b-datum (1.05) stable; urgency=low
 
   * Support for multiples dirs in the path parameter per profile
