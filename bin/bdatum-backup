@@ -39230,6 +39230,10 @@ sub start {
         }
       } while ( $error && ( $attempt++ < 3 ) );
 
+      if ($error) {
+        &send_report( ERR_TOO_MANY_TRY, $file );
+      }
+
       if ($opt->{use_stage} && $change_specs->{stage_file} && -e $change_specs->{stage_file} && !-l $change_specs->{stage_file}) {
         $util->log_info("Remote file from stage: $change_specs->{stage_file}");
         unlink ( $change_specs->{stage_file} );
