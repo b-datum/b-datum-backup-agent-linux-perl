@@ -22,6 +22,6 @@ cp bin/* $DIR/bin
 mkdir -p $DIR/macos
 cp macos/* $DIR/macos
 
-cp scripts/* $DIR
+cp scripts/*mac.sh $DIR
 
 tar cvfzp b-datum-mac-$VERSION.tar.gz $DIR
