@@ -10,16 +10,16 @@ Para instalar no Ubuntu/Debian basta utilizar o pacote já pronto e utilizar o g
 # apt-get update
 # apt-get install gdebi-core
 # cd /tmp
-# wget https://github.com/b-datum/b-datum-linux/releases/download/1.06/b-datum_1.06_all.deb
-# gdebi b-datum_1.06_all.deb
+# wget https://github.com/b-datum/b-datum-linux/releases/download/1.07/b-datum_1.07_all.deb
+# gdebi b-datum_1.07_all.deb
 ```
 
 Para instalar no CentOS/Fedora/RedHat/OpenSuse, basta baixar o pacote:
 
 ```
 # cd /tmp
-# wget https://github.com/b-datum/b-datum-linux/releases/download/1.06/b-datum-1.06-1.el6.noarch.rpm
-# rpm -Uvh b-datum-1.06-1.el6.noarch.rpm
+# wget https://github.com/b-datum/b-datum-linux/releases/download/1.07/b-datum-1.07-1.el6.noarch.rpm
+# rpm -Uvh b-datum-1.07-1.el6.noarch.rpm
 ```
 
 Você também pode baixar os fontes, e realizar a instalação manual e executar o Makefile.
