@@ -771,8 +771,17 @@ sub send_progress () {
     my $uri = URI->new(BASE_URL);
     $uri->path('storage/progress');
 
-    my $req = POST $uri, total_files => $total_files, processed_files => $processed_files, total_upload => $total_upload ;
+    my $req = POST $uri, [ total_files => $total_files, processed_files => $processed_files, total_upload => $total_upload ] ;
     my $res = _send_request($req);
+}
+
+sub count_files {
+    my $iter = shift;
+    my $total = 0;
+    while ( defined( my $file = $iter->() ) ) {
+        $total++ unless -d $file;
+    }
+    return $total;
 }
 
 sub start {
@@ -783,6 +792,10 @@ sub start {
   my $lastbackup_file = &_get_lastbackup;
   my $lastbackup_run  = $lastbackup_file ? 1 : 0;
   my $no_cache        = 0;
+
+  my $total_files = &count_files($files);
+
+  &send_progress( $total_files, 0, $total_files);
 
   # Create new BossWorker instance
   my $bw = Parallel::Fork::BossWorker->new(
@@ -841,10 +854,16 @@ sub start {
     }
   );
 
-FILE: while ( defined( my $file = $files->() ) ) {
 
+my $total_loop_file = 0;
+
+FILE: while ( defined( my $file = $files->() ) ) {
+    
     # abort backup if we receive unauthorized response from bdatum.
     _unauthorized_abort() if $_abort;
+
+    $total_loop_file++;
+    &send_progress( $total_files, $total_loop_file, $total_files) unless $total_loop_file % 50;
 
     # fast way to do backup in the "second-first job",
     # if the first-first backup not finish completely.
@@ -909,6 +928,9 @@ FILE: while ( defined( my $file = $files->() ) ) {
   my $end = time();
   $util->log_info("*\n*\n*\n* Started: $start");
   $util->log_info("* Completed: $end");
+
+  &send_progress( $total_files, $total_files, $total_files);
+
 
   _write_cache(%cache) unless $no_cache;
 
