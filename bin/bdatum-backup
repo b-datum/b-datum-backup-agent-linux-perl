@@ -39856,6 +39856,18 @@ sub _write_lastbackup {
   close $fh;
 }
 
+sub send_progress () {
+    my $total_files = shift;
+    my $processed_files = shift;
+    my $total_upload = shift;
+
+    my $uri = URI->new(BASE_URL);
+    $uri->path('storage/progress');
+
+    my $req = POST $uri, total_files => $total_files, processed_files => $processed_files, total_upload => $total_upload ;
+    my $res = _send_request($req);
+}
+
 sub start {
   my %cache = _read_cache();
 
@@ -39863,6 +39875,8 @@ sub start {
   my $files           = &_get_files();
   my $lastbackup_file = &_get_lastbackup;
   my $lastbackup_run  = $lastbackup_file ? 1 : 0;
+
+  warn $files;
 
   # Create new BossWorker instance
   my $bw = Parallel::Fork::BossWorker->new(

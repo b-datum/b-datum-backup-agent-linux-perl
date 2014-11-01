@@ -782,6 +782,7 @@ sub start {
   my $files           = &_get_files();
   my $lastbackup_file = &_get_lastbackup;
   my $lastbackup_run  = $lastbackup_file ? 1 : 0;
+  my $no_cache        = 0;
 
   # Create new BossWorker instance
   my $bw = Parallel::Fork::BossWorker->new(
@@ -815,6 +816,7 @@ sub start {
 
         catch { $error = $_; sleep(3); };
         if ($error) {
+          $no_cache++;
           $util->log_warn("Error sending $file trying again... $attempt");
           $util->log_warn("\t\t$error");
         }
@@ -908,7 +910,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
   $util->log_info("*\n*\n*\n* Started: $start");
   $util->log_info("* Completed: $end");
 
-  _write_cache(%cache);
+  _write_cache(%cache) unless $no_cache;
 
 }
 
