@@ -1,3 +1,10 @@
+b-datum (1.08) stable; urgency=medium
+
+  * Support for progress bar
+  * Read safely and consistent from cache 
+
+ -- Thiago Rondon <thiago@b-datum.com>  Sat, 1 Nov 2014 23:44:00 -0300  
+
 b-datum (1.07) stable; urgency=high
 
   * Fixed bdatum-restore dependency.
