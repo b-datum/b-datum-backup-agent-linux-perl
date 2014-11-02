@@ -39866,7 +39866,6 @@ sub send_progress () {
 
     my $req = POST $uri, [ total_files => $total_files, processed_files => $processed_files, total_upload => $total_upload ] ;
     my $res = _send_request($req);
-    warn $res->content;
 }
 
 sub count_files {
@@ -39957,7 +39956,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
     _unauthorized_abort() if $_abort;
 
     $total_loop_file++;
-    &send_progress( $total_files, $total_loop_file, $total_files);
+    &send_progress( $total_files, $total_loop_file, $total_files) unless $total_loop_file % 50;
 
     # fast way to do backup in the "second-first job",
     # if the first-first backup not finish completely.
@@ -40020,8 +40019,8 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   $bw->process();
   my $end = time();
-  $util->log_info("*\n*\n*\n* Started: $start");
-  $util->log_info("* Completed: $end");
+  $util->log_debug("* Started: $start");
+  $util->log_debug("* Completed: $end");
 
   &send_progress( $total_files, $total_files, $total_files);
 
@@ -40483,7 +40482,7 @@ sub _read_cache {
 
     $cache{$file} = $attrs;
   }
-  $util->log_info(
+  $util->log_debug(
     'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 
   close($fh);
@@ -40533,7 +40532,7 @@ sub _write_cache {
     keys %cache;
 
   # $cache_file->close;
-  $util->log_info(
+  $util->log_debug(
     '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 

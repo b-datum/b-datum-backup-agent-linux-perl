@@ -926,8 +926,8 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   $bw->process();
   my $end = time();
-  $util->log_info("*\n*\n*\n* Started: $start");
-  $util->log_info("* Completed: $end");
+  $util->log_debug("* Started: $start");
+  $util->log_debug("* Completed: $end");
 
   &send_progress( $total_files, $total_files, $total_files);
 
@@ -1389,7 +1389,7 @@ sub _read_cache {
 
     $cache{$file} = $attrs;
   }
-  $util->log_info(
+  $util->log_debug(
     'Cache read took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 
   close($fh);
@@ -1439,7 +1439,7 @@ sub _write_cache {
     keys %cache;
 
   # $cache_file->close;
-  $util->log_info(
+  $util->log_debug(
     '* Cache write took: ' . sprintf( "%.9f", ( time - $t ) ) . "s" );
 }
 
