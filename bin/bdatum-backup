@@ -40017,13 +40017,16 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   }
 
-  $bw->process();
+  eval {
+      $bw->process();
+  };
+  if ($@) { $no_cache++ };
+
   my $end = time();
   $util->log_debug("* Started: $start");
   $util->log_debug("* Completed: $end");
 
   &send_progress( $total_files, $total_files, $total_files);
-
 
   _write_cache(%cache) unless $no_cache;
 
