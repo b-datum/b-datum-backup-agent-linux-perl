@@ -793,8 +793,8 @@ sub start {
   my $lastbackup_run  = $lastbackup_file ? 1 : 0;
   my $no_cache        = 0;
 
-  my $total_files = &count_files($files);
-
+  # TODO - we can't run again _get_files.
+  my $total_files = &count_files( &_get_files() );
   &send_progress( $total_files, 0, $total_files);
 
   # Create new BossWorker instance
