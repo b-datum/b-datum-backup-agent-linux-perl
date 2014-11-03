@@ -862,7 +862,7 @@ FILE: while ( defined( my $file = $files->() ) ) {
     # abort backup if we receive unauthorized response from bdatum.
     _unauthorized_abort() if $_abort;
 
-    $total_loop_file++;
+    $total_loop_file++ if -f $file;
     &send_progress( $total_files, $total_loop_file, $total_files) unless $total_loop_file % 50;
 
     # fast way to do backup in the "second-first job",
