@@ -121,7 +121,7 @@ sub _unauthorized_abort {
 
 sub _check_if_has_s3 {
   return if $CAN_DO_S3;
-  &send_report(ERR_NO_PERL_S3, 'Net::Amazon::S3');
+  &send_report( ERR_NO_PERL_S3, 'Net::Amazon::S3' );
   $util->log_error("*** ERROR: You need to install Net::Amazon::S3");
   exit 1;
 }
@@ -159,7 +159,7 @@ sub send_report {
   my $uri = URI->new(BASE_URL);
   $uri->path('report');
 
-  my $req = POST $uri, [code => $code, message => $message];
+  my $req = POST $uri, [ code => $code, message => $message ];
   my $res = _send_request($req);
 
   if ( !$res->is_success ) {
@@ -462,9 +462,9 @@ q{because of --remote-config the time defined in --persistent_time will be ignor
   if ( $opt->{remote_config} ) {
     get_schedule();
   }
-  
+
   if ( !$util->validate_path($path) ) {
-    &send_report( ERR_NO_PATH, join(';', $path) );
+    &send_report( ERR_NO_PATH, join( ';', $path ) );
     $util->log_error( "Required option missing: path.", 64 );
   }
 
@@ -495,7 +495,7 @@ sub wait_if_needed {
     && ( $backup_start_time =~ /^\d{1,2}:\d{2}$/ );
 
   # 60 tries with 10s sleep == 600s == 10min between calls to get_schedule()
-  my $MAX_TRY = 60; 
+  my $MAX_TRY = 60;
 
   my $try = 0;
 
@@ -585,6 +585,14 @@ sub prepare_ua {
   }
 }
 
+sub mark_backup_start {
+  &send_report(BACKUP);
+}
+
+sub mark_backup_end {
+  &send_report(OK_ALL);
+}
+
 sub backup {
 
   wait_if_needed();
@@ -596,7 +604,11 @@ sub backup {
   &_check_already_running;
   &check_alive();
 
+  mark_backup_start();
+
   start();
+
+  mark_backup_end();
 
   _send_manifest();
 
@@ -608,6 +620,7 @@ sub get_schedule {
   my $seconds_in_day = 24 * 60 * 60;
 
   $util->log_info("Fetching storage config from b-datum");
+
   #&send_report(OK_UPDATE_CONFIG);
 
   my $uri = URI->new(BASE_URL);
@@ -683,10 +696,10 @@ sub _get_files {
 
   return File::Next::everything(
     {
-      error_handler => sub { 
-          &send_report(ERR_SEND_FILE, @_);
-          $util->log_error(@_); 
-          },
+      error_handler => sub {
+        &send_report( ERR_SEND_FILE, @_ );
+        $util->log_error(@_);
+      },
 
       # show symlinks
       follow_symlinks => 1,
@@ -764,24 +777,29 @@ sub _write_lastbackup {
 }
 
 sub send_progress () {
-    my $total_files = shift;
-    my $processed_files = shift;
-    my $total_upload = shift;
+  my $total_files     = shift;
+  my $processed_files = shift;
+  my $total_upload    = shift;
 
-    my $uri = URI->new(BASE_URL);
-    $uri->path('storage/progress');
+  my $uri = URI->new(BASE_URL);
+  $uri->path('storage/progress');
 
-    my $req = POST $uri, [ total_files => $total_files, processed_files => $processed_files, total_upload => $total_upload ] ;
-    my $res = _send_request($req);
+  my $req = POST $uri,
+    [
+    total_files     => $total_files,
+    processed_files => $processed_files,
+    total_upload    => $total_upload
+    ];
+  my $res = _send_request($req);
 }
 
 sub count_files {
-    my $iter = shift;
-    my $total = 0;
-    while ( defined( my $file = $iter->() ) ) {
-        $total++ unless -d $file;
-    }
-    return $total;
+  my $iter  = shift;
+  my $total = 0;
+  while ( defined( my $file = $iter->() ) ) {
+    $total++ unless -d $file;
+  }
+  return $total;
 }
 
 sub start {
@@ -795,7 +813,7 @@ sub start {
 
   # TODO - we can't run again _get_files.
   my $total_files = &count_files( &_get_files() );
-  &send_progress( $total_files, 0, $total_files);
+  &send_progress( $total_files, 0, $total_files );
 
   # Create new BossWorker instance
   my $bw = Parallel::Fork::BossWorker->new(
@@ -839,31 +857,35 @@ sub start {
         &send_report( ERR_TOO_MANY_TRY, $file );
       }
 
-      if ($opt->{use_stage} && $change_specs->{stage_file} && -e $change_specs->{stage_file} && !-l $change_specs->{stage_file}) {
+      if ( $opt->{use_stage}
+        && $change_specs->{stage_file}
+        && -e $change_specs->{stage_file}
+        && !-l $change_specs->{stage_file} )
+      {
         $util->log_info("Remote file from stage: $change_specs->{stage_file}");
-        unlink ( $change_specs->{stage_file} );
+        unlink( $change_specs->{stage_file} );
       }
 
-#     ( unlink( $change_specs->{stage_file} )
-#         || die
-#         qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
-#        if exists $change_specs->{stage_file};
-#    #    && -e $change_specs->{stage_file}
-#    #    && !-l $change_specs->{stage_file};
+     #     ( unlink( $change_specs->{stage_file} )
+     #         || die
+     #         qq{Could not unlink tempfile "$change_specs->{stage_file}": $!} )
+     #        if exists $change_specs->{stage_file};
+     #    #    && -e $change_specs->{stage_file}
+     #    #    && !-l $change_specs->{stage_file};
 
     }
   );
 
-
-my $total_loop_file = 0;
+  my $total_loop_file = 0;
 
 FILE: while ( defined( my $file = $files->() ) ) {
-    
+
     # abort backup if we receive unauthorized response from bdatum.
     _unauthorized_abort() if $_abort;
 
     $total_loop_file++ if -f $file;
-    &send_progress( $total_files, $total_loop_file, $total_files) unless $total_loop_file % 50;
+    &send_progress( $total_files, $total_loop_file, $total_files )
+      unless $total_loop_file % 50;
 
     # fast way to do backup in the "second-first job",
     # if the first-first backup not finish completely.
@@ -892,14 +914,13 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
     my $change_specs = get_changes( $file, \@previous_attrs );
 
-    if ($cache{$file} && !$change_specs->{modified_fields}) {
-        $util->log_debug("Skipping file: $file (no changes)");
-        next;
+    if ( $cache{$file} && !$change_specs->{modified_fields} ) {
+      $util->log_debug("Skipping file: $file (no changes)");
+      next;
     }
 
     # here, we go.
     $util->log_info("queuing: $file");
-
 
     $cache{$file} = $change_specs->{attributes};
 
@@ -924,16 +945,14 @@ FILE: while ( defined( my $file = $files->() ) ) {
 
   }
 
-  eval {
-      $bw->process();
-  };
-  if ($@) { $no_cache++ };
+  eval { $bw->process(); };
+  if ($@) { $no_cache++ }
 
   my $end = time();
   $util->log_debug("* Started: $start");
   $util->log_debug("* Completed: $end");
 
-  &send_progress( $total_files, $total_files, $total_files);
+  &send_progress( $total_files, $total_files, $total_files );
 
   _write_cache(%cache) unless $no_cache;
 
@@ -1128,10 +1147,10 @@ sub _send_multipart {
 
   while ( read( $fh, $buffer, $PART_LIMIT_SIZE ) ) {
     $util->log_info("sending part $i of $file");
-    
+
     my $current_md5 = file_md5_hex($sfile);
-    if ($current_md5 ne $last_md5) {
-        die "Detect change in the file: $sfile";
+    if ( $current_md5 ne $last_md5 ) {
+      die "Detect change in the file: $sfile";
     }
 
     my $uri = URI->new(BASE_URL);
@@ -1462,8 +1481,8 @@ sub _stage_file {
 }
 
 sub _link_to_stage {
-  my $file       = shift;
-  
+  my $file = shift;
+
   return $file unless $opt->{use_stage};
 
   my $stage_file = _stage_file($file);

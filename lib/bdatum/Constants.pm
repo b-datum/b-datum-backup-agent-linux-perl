@@ -27,7 +27,7 @@ use constant SYMLINK => 5;
 use constant ONLINE => 100;    # I'm here
 use constant BACKUP => 101;    # Doing..
 
-use constant OK_ALL           => 200;    # Withour problem
+use constant OK_ALL           => 200;    # Backup finalized without problem, 
 use constant OK_UPDATE_CONFIG => 201;    # Configuração atualizada
 
 use constant ERR_PERM_ETC   => 301;      # Please run 'chmod 0400 /configfile'
